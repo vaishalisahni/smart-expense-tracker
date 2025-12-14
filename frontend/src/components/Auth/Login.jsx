@@ -16,67 +16,77 @@ const Login = ({ onSwitchToRegister }) => {
     try {
       await login(email, password);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Failed to login. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="bg-indigo-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <DollarSign className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900">Smart Expense Tracker</h1>
-          <p className="text-gray-600 mt-2">AI-Powered Student Finance Manager</p>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 to-indigo-200 px-4 bg-amber-900">
+      {/* Card */}
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 relative">
+        {/* Icon */}
+        <div className="bg-indigo-600 w-14 h-14 rounded-full flex items-center justify-center mx-auto -mt-10 shadow-lg">
+          <DollarSign className="w-7 h-7 text-white" />
         </div>
 
+        {/* Heading */}
+        <div className="text-center mt-2 mb-6">
+          <h1 className="text-3xl font-extrabold text-gray-900">Smart Expense Tracker</h1>
+          <p className="text-gray-500 text-sm mt-1">AI-Powered Student Finance Manager</p>
+        </div>
+
+        {/* Error Message */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm animate-fadeIn">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               placeholder="student@university.edu"
               required
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               placeholder="••••••••"
               required
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition disabled:opacity-50"
+            className="w-full py-3 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition duration-200 disabled:opacity-50"
           >
             {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
 
-        <div className="mt-6 text-center">
-          <p className="text-gray-600">
+        {/* Footer */}
+        <div className="mt-6 text-center text-sm text-gray-500">
+          <p>
             Don't have an account?{' '}
-            <button onClick={onSwitchToRegister} className="text-indigo-600 font-semibold hover:underline">
+            <button
+              onClick={onSwitchToRegister}
+              className="text-indigo-600 font-medium hover:underline hover:text-indigo-700 transition duration-200"
+            >
               Register
             </button>
           </p>

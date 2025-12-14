@@ -4,6 +4,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
+const cookieParser = require('cookie-parser');
 
 const authRoutes = require('./routes/auth');
 const expenseRoutes = require('./routes/expenses');
@@ -17,6 +18,7 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
+app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 
 // Rate Limiting

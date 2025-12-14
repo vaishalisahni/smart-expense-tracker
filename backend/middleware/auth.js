@@ -3,17 +3,17 @@ const User = require('../models/User');
 
 exports.protect = async (req, res, next) => {
   try {
-    let token;
-
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      token = req.headers.authorization.split(' ')[1];
-    }
+    // ✅ Read token from cookie
+    const token = req.cookies?.token;
 
     if (!token) {
       return res.status(401).json({ error: 'Not authorized, no token' });
     }
 
+    // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Attach user to request
     req.user = await User.findById(decoded.id).select('-password');
 
     if (!req.user) {
@@ -22,13 +22,13 @@ exports.protect = async (req, res, next) => {
 
     next();
   } catch (error) {
-    res.status(401).json({ error: 'Not authorized, token failed' });
+    return res.status(401).json({ error: 'Not authorized, token invalid' });
   }
 };
 
 exports.authorize = (...roles) => {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
+    if (!req.user || !roles.includes(req.user.role)) {
       return res.status(403).json({ error: 'Not authorized for this action' });
     }
     next();

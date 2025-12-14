@@ -1,37 +1,43 @@
 import React, { useState } from 'react';
 import { Mic, Camera } from 'lucide-react';
-import { aiCategorizeExpense } from '../../utils/aiCategorization';
 
 const AddExpense = ({ onClose, onAddExpense }) => {
-  const [newExpense, setNewExpense] = useState({ 
+  const [formData, setFormData] = useState({ 
     amount: '', 
     description: '', 
-    category: 'food', 
+    category: 'auto',
     date: new Date().toISOString().split('T')[0] 
   });
-  const [voiceInput, setVoiceInput] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleAddExpense = () => {
-    if (newExpense.amount && newExpense.description) {
-      const aiResult = aiCategorizeExpense(newExpense.description, parseFloat(newExpense.amount));
-      const expense = {
-        id: Date.now(),
-        amount: parseFloat(newExpense.amount),
-        category: aiResult.category,
-        description: newExpense.description,
-        date: newExpense.date,
-        aiGenerated: aiResult.aiGenerated
-      };
-      onAddExpense(expense);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.amount || !formData.description) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await onAddExpense({
+        amount: parseFloat(formData.amount),
+        description: formData.description,
+        category: formData.category,
+        date: formData.date
+      });
+    } catch (error) {
+      console.error('Error adding expense:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleVoiceInput = () => {
-    setVoiceInput(true);
-    setTimeout(() => {
-      setNewExpense({ ...newExpense, description: 'Dinner at restaurant', amount: '250' });
-      setVoiceInput(false);
-    }, 2000);
+    alert('Voice input feature coming soon!');
+  };
+
+  const handleReceiptScan = () => {
+    alert('Receipt scanning feature coming soon!');
   };
 
   return (
@@ -39,59 +45,97 @@ const AddExpense = ({ onClose, onAddExpense }) => {
       <div className="bg-white rounded-2xl p-6 w-full max-w-md">
         <h3 className="text-xl font-bold text-gray-900 mb-4">Add New Expense</h3>
         
-        <div className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
             <input
               type="text"
-              value={newExpense.description}
-              onChange={(e) => setNewExpense({ ...newExpense, description: e.target.value })}
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
               placeholder="e.g., Lunch at cafeteria"
+              required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Amount (₹)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Amount (₹) *</label>
             <input
               type="number"
-              value={newExpense.amount}
-              onChange={(e) => setNewExpense({ ...newExpense, amount: e.target.value })}
+              step="0.01"
+              value={formData.amount}
+              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
               placeholder="150"
+              required
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+            <select
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="auto">Auto-detect (AI)</option>
+              <option value="food">Food</option>
+              <option value="travel">Travel</option>
+              <option value="education">Education</option>
+              <option value="entertainment">Entertainment</option>
+              <option value="utilities">Utilities</option>
+              <option value="shopping">Shopping</option>
+              <option value="health">Health</option>
+              <option value="others">Others</option>
+            </select>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
             <input
               type="date"
-              value={newExpense.date}
-              onChange={(e) => setNewExpense({ ...newExpense, date: e.target.value })}
+              value={formData.date}
+              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <button onClick={handleVoiceInput} className="flex items-center justify-center space-x-2 px-4 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition">
+            <button 
+              type="button"
+              onClick={handleVoiceInput} 
+              className="flex items-center justify-center space-x-2 px-4 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition"
+            >
               <Mic className="w-4 h-4" />
-              <span>{voiceInput ? 'Listening...' : 'Voice Input'}</span>
+              <span>Voice Input</span>
             </button>
-            <button className="flex items-center justify-center space-x-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition">
+            <button 
+              type="button"
+              onClick={handleReceiptScan}
+              className="flex items-center justify-center space-x-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition"
+            >
               <Camera className="w-4 h-4" />
               <span>Scan Receipt</span>
             </button>
           </div>
-        </div>
 
-        <div className="flex space-x-3 mt-6">
-          <button onClick={onClose} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition">
-            Cancel
-          </button>
-          <button onClick={handleAddExpense} className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition">
-            Add Expense
-          </button>
-        </div>
+          <div className="flex space-x-3 mt-6">
+            <button 
+              type="button"
+              onClick={onClose} 
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit"
+              disabled={loading}
+              className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
+            >
+              {loading ? 'Adding...' : 'Add Expense'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
