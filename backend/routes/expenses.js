@@ -3,6 +3,7 @@ const router = express.Router();
 const upload = require('../middleware/upload');
 const {
   getExpenses,
+  getExpense,
   createExpense,
   createExpenseFromVoice,
   createExpenseFromReceipt,

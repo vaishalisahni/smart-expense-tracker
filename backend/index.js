@@ -8,6 +8,8 @@ const cookieParser = require('cookie-parser');
 
 const authRoutes = require('./routes/auth');
 const expenseRoutes = require('./routes/expenses');
+const groupRoutes = require('./routes/groups');
+
 
 const app = express();
 
@@ -20,6 +22,7 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
+app.use('/api/groups', groupRoutes);
 
 // Rate Limiting
 const limiter = rateLimit({
