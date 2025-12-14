@@ -53,6 +53,20 @@ app.use((err, req, res, next) => {
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   });
 });
+const cron = require('node-cron');
+const { resetAllMonthlyAlerts, sendMonthlyReportsToAll } = require('./utils/budgetAlertService');
+
+// Reset alerts at start of each month (00:00 on 1st)
+cron.schedule('0 0 1 * *', async () => {
+  console.log('Resetting monthly alerts...');
+  await resetAllMonthlyAlerts();
+});
+
+// Send monthly reports on 1st of each month (01:00)
+cron.schedule('0 1 1 * *', async () => {
+  console.log('Sending monthly reports...');
+  await sendMonthlyReportsToAll();
+});
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

@@ -20,6 +20,10 @@ const userSchema = new mongoose.Schema({
     minlength: 6,
     select: false
   },
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
   role: {
     type: String,
     enum: ['student', 'admin'],
@@ -29,10 +33,30 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 5000
   },
+  weeklyBudget: {
+    type: Number,
+    default: 1250
+  },
   preferences: {
     currency: { type: String, default: 'INR' },
-    notifications: { type: Boolean, default: true }
+    notifications: { type: Boolean, default: true },
+    emailAlerts: { type: Boolean, default: true },
+    budgetAlerts: {
+      at70: { type: Boolean, default: true },
+      at90: { type: Boolean, default: true },
+      at100: { type: Boolean, default: true }
+    },
+    theme: { type: String, enum: ['light', 'dark'], default: 'light' }
   },
+  alertsSent: {
+    type: Map,
+    of: Boolean,
+    default: {}
+  },
+  lastReportSent: {
+    type: Date
+  },
+  profilePicture: String,
   createdAt: {
     type: Date,
     default: Date.now
@@ -49,6 +73,12 @@ userSchema.pre('save', async function(next) {
 // Compare password method
 userSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
+};
+
+// Reset alert flags at the start of each month
+userSchema.methods.resetMonthlyAlerts = function() {
+  this.alertsSent = new Map();
+  return this.save();
 };
 
 module.exports = mongoose.model('User', userSchema);
