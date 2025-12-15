@@ -23,14 +23,14 @@ const generateRefreshToken = (id) => {
 const cookieOptions = {
   httpOnly: true,
   secure: isProduction, // true in prod
-  sameSite: isProduction ? 'lax' : 'lax', // works in dev for localhost
+  sameSite: none, 
   maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
 };
 
 const refreshCookieOptions = {
   httpOnly: true,
   secure: isProduction,
-  sameSite: isProduction ? 'lax' : 'lax',
+  sameSite: none,
   maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
 };
 
