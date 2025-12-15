@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mic, Camera } from 'lucide-react';
+import { Mic, Camera, X } from 'lucide-react';
 import VoiceInput from './VoiceInput';
 import ReceiptScanner from './ReceiptScanner';
 
@@ -63,10 +63,19 @@ const AddExpense = ({ onClose, onAddExpense }) => {
         });
         setShowReceiptScanner(false);
     };
+
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-2xl p-6 w-full max-w-md">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Add New Expense</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+            <div className="bg-white rounded-2xl p-4 sm:p-6 w-full max-w-md my-4 max-h-[90vh] overflow-y-auto">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-900">Add New Expense</h3>
+                    <button
+                        onClick={onClose}
+                        className="p-2 hover:bg-gray-100 rounded-lg transition"
+                    >
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
@@ -75,7 +84,7 @@ const AddExpense = ({ onClose, onAddExpense }) => {
                             type="text"
                             value={formData.description}
                             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                            className="w-full px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
                             placeholder="e.g., Lunch at cafeteria"
                             required
                         />
@@ -88,7 +97,7 @@ const AddExpense = ({ onClose, onAddExpense }) => {
                             step="0.01"
                             value={formData.amount}
                             onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                            className="w-full px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
                             placeholder="150"
                             required
                         />
@@ -99,7 +108,7 @@ const AddExpense = ({ onClose, onAddExpense }) => {
                         <select
                             value={formData.category}
                             onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                            className="w-full px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
                         >
                             <option value="auto">Auto-detect (AI)</option>
                             <option value="food">Food</option>
@@ -119,15 +128,15 @@ const AddExpense = ({ onClose, onAddExpense }) => {
                             type="date"
                             value={formData.date}
                             onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                            className="w-full px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
                         />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <button
                             type="button"
                             onClick={handleVoiceInput}
-                            className="flex items-center justify-center space-x-2 px-4 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition"
+                            className="flex items-center justify-center space-x-2 px-4 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition text-sm"
                         >
                             <Mic className="w-4 h-4" />
                             <span>Voice Input</span>
@@ -135,32 +144,32 @@ const AddExpense = ({ onClose, onAddExpense }) => {
                         <button
                             type="button"
                             onClick={handleReceiptScan}
-                            className="flex items-center justify-center space-x-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition"
+                            className="flex items-center justify-center space-x-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition text-sm"
                         >
                             <Camera className="w-4 h-4" />
                             <span>Scan Receipt</span>
                         </button>
                     </div>
 
-                    <div className="flex space-x-3 mt-6">
+                    <div className="flex flex-col sm:flex-row gap-3 mt-6">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                            className="w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-sm sm:text-base"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={loading}
-                            className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
+                            className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 text-sm sm:text-base"
                         >
                             {loading ? 'Adding...' : 'Add Expense'}
                         </button>
                     </div>
                 </form>
             </div>
-            {/* Voice Input Modal */}
+
             {showVoiceInput && (
                 <VoiceInput
                     onClose={() => setShowVoiceInput(false)}
@@ -168,7 +177,6 @@ const AddExpense = ({ onClose, onAddExpense }) => {
                 />
             )}
 
-            {/* Receipt Scanner Modal */}
             {showReceiptScanner && (
                 <ReceiptScanner
                     onClose={() => setShowReceiptScanner(false)}

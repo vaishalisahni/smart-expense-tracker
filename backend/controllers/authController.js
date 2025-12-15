@@ -4,19 +4,17 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { sendOTPEmail } = require('../utils/emailService');
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 // ===============================
 // Token helpers
 // ===============================
 const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: '7d',
-  });
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 };
 
 const generateRefreshToken = (id) => {
-  return jwt.sign({ id }, process.env.REFRESH_TOKEN_SECRET, {
-    expiresIn: '30d',
-  });
+  return jwt.sign({ id }, process.env.REFRESH_TOKEN_SECRET, { expiresIn: '30d' });
 };
 
 // ===============================
@@ -24,24 +22,22 @@ const generateRefreshToken = (id) => {
 // ===============================
 const cookieOptions = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax',
+  secure: isProduction, // true in prod
+  sameSite: isProduction ? 'lax' : 'lax', // works in dev for localhost
   maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
 };
 
 const refreshCookieOptions = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax',
+  secure: isProduction,
+  sameSite: isProduction ? 'lax' : 'lax',
   maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
 };
 
 // ===============================
 // Generate OTP
 // ===============================
-const generateOTP = () => {
-  return crypto.randomInt(100000, 999999).toString();
-};
+const generateOTP = () => crypto.randomInt(100000, 999999).toString();
 
 // ===============================
 // @desc    Request OTP for registration
@@ -51,40 +47,20 @@ const generateOTP = () => {
 exports.requestOTP = async (req, res) => {
   try {
     const { email, name } = req.body;
+    if (!email || !name) return res.status(400).json({ error: 'Email and name are required' });
 
-    if (!email || !name) {
-      return res.status(400).json({ error: 'Email and name are required' });
-    }
-
-    // Check if user already exists
     const userExists = await User.findOne({ email });
-    if (userExists) {
-      return res.status(400).json({ error: 'User already exists with this email' });
-    }
+    if (userExists) return res.status(400).json({ error: 'User already exists with this email' });
 
-    // Delete any existing OTPs for this email
     await OTP.deleteMany({ email });
 
-    // Generate new OTP
     const otpCode = generateOTP();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min
 
-    // Save OTP to database
-    await OTP.create({
-      email,
-      otp: otpCode,
-      expiresAt,
-      attempts: 0
-    });
-
-    // Send OTP via email
+    await OTP.create({ email, otp: otpCode, expiresAt, attempts: 0 });
     await sendOTPEmail(email, name, otpCode);
 
-    res.json({
-      success: true,
-      message: 'OTP sent to your email',
-      expiresIn: 600 // 10 minutes in seconds
-    });
+    res.json({ success: true, message: 'OTP sent to your email', expiresIn: 600 });
   } catch (error) {
     console.error('Request OTP Error:', error);
     res.status(500).json({ error: error.message });
@@ -99,68 +75,41 @@ exports.requestOTP = async (req, res) => {
 exports.verifyOTP = async (req, res) => {
   try {
     const { email, otp, password, name } = req.body;
-
-    if (!email || !otp || !password || !name) {
+    if (!email || !otp || !password || !name)
       return res.status(400).json({ error: 'All fields are required' });
-    }
 
-    // Find OTP record
     const otpRecord = await OTP.findOne({ email });
+    if (!otpRecord) return res.status(400).json({ error: 'No OTP found. Please request a new one.' });
 
-    if (!otpRecord) {
-      return res.status(400).json({ error: 'No OTP found. Please request a new one.' });
-    }
-
-    // Check if OTP is expired
     if (otpRecord.expiresAt < new Date()) {
       await OTP.deleteOne({ email });
       return res.status(400).json({ error: 'OTP expired. Please request a new one.' });
     }
 
-    // Check attempts
     if (otpRecord.attempts >= 3) {
       await OTP.deleteOne({ email });
       return res.status(400).json({ error: 'Too many failed attempts. Please request a new OTP.' });
     }
 
-    // Verify OTP
     if (otpRecord.otp !== otp) {
       otpRecord.attempts += 1;
       await otpRecord.save();
-      return res.status(400).json({ 
-        error: 'Invalid OTP',
-        attemptsLeft: 3 - otpRecord.attempts
-      });
+      return res.status(400).json({ error: 'Invalid OTP', attemptsLeft: 3 - otpRecord.attempts });
     }
 
-    // OTP verified - Create user
-    const user = await User.create({ 
-      name, 
-      email, 
-      password,
-      isVerified: true
-    });
-
-    // Delete OTP record
+    const user = await User.create({ name, email, password, isVerified: true });
     await OTP.deleteOne({ email });
 
-    // Generate tokens
     const token = generateToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
 
-    // Set cookies
     res.cookie('token', token, cookieOptions);
     res.cookie('refreshToken', refreshToken, refreshCookieOptions);
 
     res.status(201).json({
       success: true,
       message: 'Registration successful',
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
+      user: { id: user._id, name: user.name, email: user.email, role: user.role },
     });
   } catch (error) {
     console.error('Verify OTP Error:', error);
@@ -176,38 +125,20 @@ exports.verifyOTP = async (req, res) => {
 exports.resendOTP = async (req, res) => {
   try {
     const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email is required' });
 
-    if (!email) {
-      return res.status(400).json({ error: 'Email is required' });
-    }
-
-    // Check if user already exists
     const userExists = await User.findOne({ email });
-    if (userExists) {
-      return res.status(400).json({ error: 'User already exists' });
-    }
+    if (userExists) return res.status(400).json({ error: 'User already exists' });
 
-    // Delete existing OTP
     await OTP.deleteMany({ email });
 
-    // Generate new OTP
     const otpCode = generateOTP();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    await OTP.create({ email, otp: otpCode, expiresAt, attempts: 0 });
 
-    await OTP.create({
-      email,
-      otp: otpCode,
-      expiresAt,
-      attempts: 0
-    });
-
-    // Send OTP via email
     await sendOTPEmail(email, 'User', otpCode);
 
-    res.json({
-      success: true,
-      message: 'New OTP sent to your email'
-    });
+    res.json({ success: true, message: 'New OTP sent to your email' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -221,25 +152,15 @@ exports.resendOTP = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ error: 'Please provide email and password' });
-    }
+    if (!email || !password) return res.status(400).json({ error: 'Please provide email and password' });
 
     const user = await User.findOne({ email }).select('+password');
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
+    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
 
-    // Check if user is verified
-    if (!user.isVerified) {
-      return res.status(401).json({ error: 'Please verify your email first' });
-    }
+    if (!user.isVerified) return res.status(401).json({ error: 'Please verify your email first' });
 
     const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
+    if (!isMatch) return res.status(401).json({ error: 'Invalid credentials' });
 
     const token = generateToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
@@ -271,16 +192,12 @@ exports.login = async (req, res) => {
 exports.refreshToken = async (req, res) => {
   try {
     const refreshToken = req.cookies.refreshToken;
-
-    if (!refreshToken) {
-      return res.status(401).json({ error: 'Refresh token missing' });
-    }
+    if (!refreshToken) return res.status(401).json({ error: 'Refresh token missing' });
 
     const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
     const newToken = generateToken(decoded.id);
 
     res.cookie('token', newToken, cookieOptions);
-
     res.json({ success: true });
   } catch (error) {
     res.status(401).json({ error: 'Invalid refresh token' });
@@ -295,11 +212,7 @@ exports.refreshToken = async (req, res) => {
 exports.logout = (req, res) => {
   res.clearCookie('token');
   res.clearCookie('refreshToken');
-
-  res.json({
-    success: true,
-    message: 'Logged out successfully',
-  });
+  res.json({ success: true, message: 'Logged out successfully' });
 };
 
 // ===============================
@@ -308,10 +221,7 @@ exports.logout = (req, res) => {
 // @access  Private
 // ===============================
 exports.getMe = async (req, res) => {
-  res.json({
-    success: true,
-    user: req.user,
-  });
+  res.json({ success: true, user: req.user });
 };
 
 // ===============================
@@ -331,16 +241,9 @@ exports.updateProfile = async (req, res) => {
     if (setupCompleted !== undefined) updateData.setupCompleted = setupCompleted;
     if (savingsGoals) updateData.savingsGoals = savingsGoals;
 
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
-      updateData,
-      { new: true, runValidators: true }
-    ).select('-password');
+    const user = await User.findByIdAndUpdate(req.user._id, updateData, { new: true, runValidators: true }).select('-password');
 
-    res.json({
-      success: true,
-      user
-    });
+    res.json({ success: true, user });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -354,25 +257,16 @@ exports.updateProfile = async (req, res) => {
 exports.changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ error: 'Please provide current and new password' });
-    }
+    if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Please provide current and new password' });
 
     const user = await User.findById(req.user._id).select('+password');
-
     const isMatch = await user.comparePassword(currentPassword);
-    if (!isMatch) {
-      return res.status(401).json({ error: 'Current password is incorrect' });
-    }
+    if (!isMatch) return res.status(401).json({ error: 'Current password is incorrect' });
 
     user.password = newPassword;
     await user.save();
 
-    res.json({
-      success: true,
-      message: 'Password changed successfully'
-    });
+    res.json({ success: true, message: 'Password changed successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
