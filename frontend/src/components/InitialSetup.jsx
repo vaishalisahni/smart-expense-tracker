@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DollarSign, Target, TrendingUp, CheckCircle } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
-const InitialSetup = ({ onComplete }) => {
+const InitialSetup = () => {
+  const navigate = useNavigate();
+  const { refreshUser } = useAuth();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     monthlyIncome: '',
@@ -42,12 +46,6 @@ const InitialSetup = ({ onComplete }) => {
           preferences: {
             currency: formData.currency
           },
-          savingsGoals: [{
-            name: formData.savingsGoal,
-            targetAmount: Number(formData.goalAmount),
-            currentAmount: 0,
-            monthlyContribution: Number(formData.monthlyIncome) * 0.2
-          }],
           setupCompleted: true
         })
       });
@@ -58,17 +56,20 @@ const InitialSetup = ({ onComplete }) => {
         throw new Error(data.error || 'Failed to save setup');
       }
 
-      // ✅ FIXED: Call refresh function from context
-      await onComplete();
+      // ✅ Refresh user data and navigate
+      await refreshUser();
+      navigate('/dashboard', { replace: true });
 
     } catch (err) {
       setError(err.message || 'Something went wrong');
-    } finally {
       setLoading(false);
     }
   };
 
   const handleSkip = async () => {
+    setLoading(true);
+    setError('');
+    
     try {
       const response = await fetch('http://localhost:5000/api/auth/profile', {
         method: 'PUT',
@@ -83,10 +84,13 @@ const InitialSetup = ({ onComplete }) => {
         throw new Error('Unable to skip setup. Try again.');
       }
 
-      // ✅ FIXED: Call refresh function
-      await onComplete();
+      // ✅ Refresh user data and navigate
+      await refreshUser();
+      navigate('/dashboard', { replace: true });
+      
     } catch (err) {
       setError(err.message || 'Unable to skip setup. Try again.');
+      setLoading(false);
     }
   };
 

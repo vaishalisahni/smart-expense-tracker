@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DollarSign, Mail, Lock, User, ArrowRight, Shield } from 'lucide-react';
 
-const Register = ({ onSwitchToLogin }) => {
+const Register = () => {
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     name: '',
@@ -129,7 +131,7 @@ const Register = ({ onSwitchToLogin }) => {
       if (data.success) {
         setSuccess('Registration successful! Redirecting...');
         setTimeout(() => {
-          window.location.reload();
+          navigate('/setup');
         }, 1500);
       } else {
         setError(data.error || 'Invalid OTP');
@@ -324,7 +326,7 @@ const Register = ({ onSwitchToLogin }) => {
           <p className="text-gray-600 text-sm">
             Already have an account?{' '}
             <button
-              onClick={onSwitchToLogin}
+              onClick={() => navigate('/login')}
               className="text-indigo-600 font-semibold hover:underline"
             >
               Login
