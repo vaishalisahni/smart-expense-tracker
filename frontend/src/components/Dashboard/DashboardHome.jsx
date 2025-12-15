@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, TrendingUp, Users, Download, LogOut, DollarSign, AlertTriangle, CheckCircle, Settings, Menu, X } from 'lucide-react';
+import { Plus, TrendingUp, Download, LogOut, DollarSign, AlertTriangle, CheckCircle, Settings, Menu, X, PieChart, BarChart3, Users, Sparkles } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { expenseService } from '../../services/expenseService';
 import { predictBudgetRisk, generateAIInsights } from '../../utils/aiCategorization';
@@ -95,19 +95,26 @@ const Dashboard = () => {
         }
     };
 
+    const navItems = [
+        { id: 'dashboard', label: 'Dashboard', icon: TrendingUp },
+        { id: 'expenses', label: 'Expenses', icon: DollarSign },
+        { id: 'analytics', label: 'Analytics', icon: PieChart },
+        { id: 'groups', label: 'Groups', icon: Users }
+    ];
+
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-50">
-                <nav className="bg-white shadow-sm border-b">
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+                <nav className="bg-white/80 backdrop-blur-xl shadow-sm border-b sticky top-0 z-40">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                        <div className="h-8 bg-gray-200 rounded w-48 sm:w-64 animate-pulse"></div>
+                        <div className="h-8 bg-gray-200 rounded-full w-48 sm:w-64 animate-pulse"></div>
                     </div>
                 </nav>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-4">
                     {[1, 2, 3].map(i => (
-                        <div key={i} className="bg-white p-6 rounded-xl shadow-sm">
-                            <div className="h-6 bg-gray-200 rounded w-3/4 animate-pulse mb-4"></div>
-                            <div className="h-4 bg-gray-200 rounded w-1/2 animate-pulse"></div>
+                        <div key={i} className="bg-white rounded-2xl shadow-sm p-6 animate-pulse">
+                            <div className="h-6 bg-gray-200 rounded-full w-3/4 mb-4"></div>
+                            <div className="h-4 bg-gray-200 rounded-full w-1/2"></div>
                         </div>
                     ))}
                 </div>
@@ -116,42 +123,50 @@ const Dashboard = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Navigation - Mobile Responsive */}
-            <nav className="bg-white shadow-sm border-b sticky top-0 z-40">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+            {/* Enhanced Navigation */}
+            <nav className="bg-white/80 backdrop-blur-xl shadow-sm border-b sticky top-0 z-40">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
                     <div className="flex justify-between items-center">
-                        <div className="flex items-center space-x-2 min-w-0 flex-1">
-                            <DollarSign className="w-6 h-6 sm:w-8 sm:h-8 text-indigo-600 flex-shrink-0" />
-                            <h1 className="text-lg sm:text-2xl font-bold text-gray-900 truncate">
-                                <span className="hidden sm:inline">Smart Expense Tracker</span>
-                                <span className="sm:hidden">Expense Tracker</span>
-                            </h1>
+                        <div className="flex items-center space-x-3 min-w-0 flex-1">
+                            <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
+                                <DollarSign className="w-6 h-6 text-white" />
+                            </div>
+                            <div className="min-w-0">
+                                <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent truncate">
+                                    Smart Expense
+                                </h1>
+                                <p className="text-xs text-gray-500 hidden sm:block">AI-Powered Finance Manager</p>
+                            </div>
                         </div>
 
                         {/* Desktop Menu */}
-                        <div className="hidden lg:flex items-center space-x-4">
-                            <span className="text-gray-700 truncate max-w-[200px]">Hello, {user.name}</span>
+                        <div className="hidden lg:flex items-center space-x-3">
+                            <div className="px-4 py-2 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl">
+                                <p className="text-sm font-semibold text-gray-700 truncate max-w-[150px]">
+                                    👋 {user.name}
+                                </p>
+                            </div>
                             <button
                                 onClick={() => setShowProfileSettings(true)}
-                                className="flex items-center space-x-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition whitespace-nowrap"
+                                className="flex items-center space-x-2 px-4 py-2 bg-white border-2 border-gray-200 text-gray-700 rounded-xl hover:border-indigo-300 hover:bg-indigo-50 transition-all duration-200 shadow-sm"
                             >
                                 <Settings className="w-4 h-4" />
-                                <span>Settings</span>
+                                <span className="font-medium">Settings</span>
                             </button>
                             <button
                                 onClick={logout}
-                                className="flex items-center space-x-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition whitespace-nowrap"
+                                className="flex items-center space-x-2 px-4 py-2 bg-red-50 border-2 border-red-200 text-red-600 rounded-xl hover:bg-red-100 transition-all duration-200 shadow-sm"
                             >
                                 <LogOut className="w-4 h-4" />
-                                <span>Logout</span>
+                                <span className="font-medium">Logout</span>
                             </button>
                         </div>
 
                         {/* Mobile Menu Button */}
                         <button
                             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                            className="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition ml-2"
+                            className="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-xl transition ml-2"
                         >
                             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
                         </button>
@@ -159,150 +174,178 @@ const Dashboard = () => {
 
                     {/* Mobile Menu Dropdown */}
                     {mobileMenuOpen && (
-                        <div className="lg:hidden mt-4 pb-2 border-t pt-4 space-y-2">
-                            <div className="px-4 py-2 text-sm text-gray-700 bg-gray-50 rounded-lg">
-                                Hello, {user.name}
+                        <div className="lg:hidden mt-4 pb-2 border-t pt-4 space-y-2 animate-fadeIn">
+                            <div className="px-4 py-3 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl">
+                                <p className="text-sm font-semibold text-gray-700">👋 Hello, {user.name}!</p>
                             </div>
                             <button
                                 onClick={() => {
                                     setShowProfileSettings(true);
                                     setMobileMenuOpen(false);
                                 }}
-                                className="w-full flex items-center space-x-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition"
+                                className="w-full flex items-center space-x-2 px-4 py-3 bg-white border-2 border-gray-200 text-gray-700 rounded-xl hover:border-indigo-300 hover:bg-indigo-50 transition-all"
                             >
                                 <Settings className="w-4 h-4" />
-                                <span>Settings</span>
+                                <span className="font-medium">Settings</span>
                             </button>
                             <button
                                 onClick={logout}
-                                className="w-full flex items-center space-x-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition"
+                                className="w-full flex items-center space-x-2 px-4 py-3 bg-red-50 border-2 border-red-200 text-red-600 rounded-xl hover:bg-red-100 transition-all"
                             >
                                 <LogOut className="w-4 h-4" />
-                                <span>Logout</span>
+                                <span className="font-medium">Logout</span>
                             </button>
                         </div>
                     )}
                 </div>
             </nav>
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                 {error && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 sm:mb-6 text-sm">
-                        {error}
+                    <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded-xl mb-6 shadow-sm animate-shake">
+                        <p className="font-medium">{error}</p>
                     </div>
                 )}
 
-                {/* Tab Navigation - Mobile Responsive */}
-                <div className="flex space-x-1 sm:space-x-2 mb-4 sm:mb-6 bg-white p-1.5 sm:p-2 rounded-lg shadow-sm overflow-x-auto scrollbar-hide">
-                    <button
-                        onClick={() => setView('dashboard')}
-                        className={`flex-1 min-w-[80px] sm:min-w-[100px] py-2 px-2 sm:px-4 rounded-lg font-medium transition text-xs sm:text-sm whitespace-nowrap ${view === 'dashboard' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
-                    >
-                        Dashboard
-                    </button>
-                    <button
-                        onClick={() => setView('expenses')}
-                        className={`flex-1 min-w-[80px] sm:min-w-[100px] py-2 px-2 sm:px-4 rounded-lg font-medium transition text-xs sm:text-sm whitespace-nowrap ${view === 'expenses' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
-                    >
-                        Expenses
-                    </button>
-                    <button
-                        onClick={() => setView('analytics')}
-                        className={`flex-1 min-w-[80px] sm:min-w-[100px] py-2 px-2 sm:px-4 rounded-lg font-medium transition text-xs sm:text-sm whitespace-nowrap ${view === 'analytics' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
-                    >
-                        Analytics
-                    </button>
-                    <button
-                        onClick={() => setView('groups')}
-                        className={`flex-1 min-w-[80px] sm:min-w-[100px] py-2 px-2 sm:px-4 rounded-lg font-medium transition text-xs sm:text-sm whitespace-nowrap ${view === 'groups' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
-                    >
-                        Groups
-                    </button>
+                {/* Enhanced Tab Navigation */}
+                <div className="flex space-x-2 mb-6 bg-white p-2 rounded-2xl shadow-sm overflow-x-auto scrollbar-hide border border-gray-100">
+                    {navItems.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                            <button
+                                key={item.id}
+                                onClick={() => setView(item.id)}
+                                className={`flex-1 min-w-[100px] py-3 px-4 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2 ${
+                                    view === item.id
+                                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg transform scale-105'
+                                        : 'text-gray-600 hover:bg-gray-50'
+                                }`}
+                            >
+                                <Icon className="w-4 h-4" />
+                                <span className="text-sm">{item.label}</span>
+                            </button>
+                        );
+                    })}
                 </div>
 
                 {/* Dashboard View */}
                 {view === 'dashboard' && (
-                    <div className="space-y-4 sm:space-y-6">
+                    <div className="space-y-6">
                         {expenses.length === 0 ? (
-                            <div className="bg-white p-8 sm:p-12 rounded-xl shadow-sm text-center">
-                                <DollarSign className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
-                                <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">No Expenses Yet</h3>
-                                <p className="text-sm sm:text-base text-gray-600 mb-6">Start tracking your expenses by adding your first transaction</p>
+                            <div className="bg-white rounded-3xl shadow-sm p-12 text-center border border-gray-100">
+                                <div className="w-20 h-20 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <DollarSign className="w-10 h-10 text-indigo-600" />
+                                </div>
+                                <h3 className="text-2xl font-bold text-gray-900 mb-2">Start Your Journey</h3>
+                                <p className="text-gray-600 mb-6">Track your first expense and let AI help you manage your finances</p>
                                 <button
                                     onClick={() => setShowAddExpense(true)}
-                                    className="bg-indigo-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-indigo-700 transition inline-flex items-center space-x-2 text-sm sm:text-base"
+                                    className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl hover:shadow-lg transform hover:scale-105 transition-all duration-200"
                                 >
-                                    <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+                                    <Plus className="w-5 h-5" />
                                     <span>Add Your First Expense</span>
                                 </button>
                             </div>
                         ) : (
                             <>
-                                {/* Budget Status Card - Mobile Responsive */}
-                                <div className={`bg-gradient-to-r ${budgetStatus.color === 'green' ? 'from-green-500 to-green-600' : budgetStatus.color === 'yellow' ? 'from-yellow-500 to-yellow-600' : budgetStatus.color === 'orange' ? 'from-orange-500 to-orange-600' : 'from-red-500 to-red-600'} text-white p-4 sm:p-6 rounded-xl shadow-lg`}>
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div className="min-w-0 flex-1">
-                                            <h2 className="text-base sm:text-lg font-medium opacity-90">Monthly Budget</h2>
-                                            <p className="text-2xl sm:text-3xl font-bold mt-2 break-words">₹{budget - totalSpent}</p>
-                                            <p className="text-xs sm:text-sm opacity-90 mt-1">Remaining of ₹{budget}</p>
+                                {/* Budget Status Card */}
+                                <div className={`rounded-3xl shadow-lg p-6 text-white relative overflow-hidden ${
+                                    budgetStatus.color === 'green' ? 'bg-gradient-to-br from-green-500 to-green-600' :
+                                    budgetStatus.color === 'yellow' ? 'bg-gradient-to-br from-yellow-500 to-yellow-600' :
+                                    budgetStatus.color === 'orange' ? 'bg-gradient-to-br from-orange-500 to-orange-600' :
+                                    'bg-gradient-to-br from-red-500 to-red-600'
+                                }`}>
+                                    <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full -mr-32 -mt-32"></div>
+                                    <div className="relative z-10">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div className="flex-1">
+                                                <p className="text-white/80 text-sm font-medium mb-1">Monthly Budget</p>
+                                                <h2 className="text-4xl font-bold mb-1">₹{(budget - totalSpent).toLocaleString()}</h2>
+                                                <p className="text-white/80 text-sm">Remaining of ₹{budget.toLocaleString()}</p>
+                                            </div>
+                                            <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-sm">
+                                                <AlertTriangle className="w-6 h-6" />
+                                            </div>
                                         </div>
-                                        <AlertTriangle className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 ml-2" />
-                                    </div>
-                                    <div className="bg-white bg-opacity-20 rounded-full h-2 sm:h-3 mb-2">
-                                        <div className="bg-white rounded-full h-2 sm:h-3 transition-all duration-300" style={{ width: `${Math.min((totalSpent / budget) * 100, 100)}%` }}></div>
-                                    </div>
-                                    <p className="text-xs sm:text-sm font-medium">{budgetStatus.message}</p>
-                                </div>
-
-                                {/* Stats Grid - Mobile Responsive */}
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                                    <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm">
-                                        <p className="text-gray-600 text-xs sm:text-sm">Total Spent</p>
-                                        <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-2 break-words">₹{totalSpent}</p>
-                                    </div>
-                                    <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm">
-                                        <p className="text-gray-600 text-xs sm:text-sm">Transactions</p>
-                                        <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-2">{expenses.length}</p>
-                                    </div>
-                                    <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm">
-                                        <p className="text-gray-600 text-xs sm:text-sm">Avg. Daily</p>
-                                        <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-2 break-words">₹{(totalSpent / 30).toFixed(0)}</p>
+                                        <div className="bg-white/20 rounded-full h-3 mb-3 overflow-hidden backdrop-blur-sm">
+                                            <div 
+                                                className="bg-white rounded-full h-3 transition-all duration-500" 
+                                                style={{ width: `${Math.min((totalSpent / budget) * 100, 100)}%` }}
+                                            ></div>
+                                        </div>
+                                        <p className="text-sm font-semibold">{budgetStatus.message}</p>
                                     </div>
                                 </div>
 
-                                {/* AI Insights - Mobile Responsive */}
+                                {/* Stats Grid */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <p className="text-gray-600 text-sm font-medium">Total Spent</p>
+                                            <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+                                                <TrendingUp className="w-5 h-5 text-red-600" />
+                                            </div>
+                                        </div>
+                                        <p className="text-3xl font-bold text-gray-900">₹{totalSpent.toLocaleString()}</p>
+                                        <p className="text-xs text-gray-500 mt-1">This month</p>
+                                    </div>
+                                    <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <p className="text-gray-600 text-sm font-medium">Transactions</p>
+                                            <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                                                <BarChart3 className="w-5 h-5 text-blue-600" />
+                                            </div>
+                                        </div>
+                                        <p className="text-3xl font-bold text-gray-900">{expenses.length}</p>
+                                        <p className="text-xs text-gray-500 mt-1">Total count</p>
+                                    </div>
+                                    <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <p className="text-gray-600 text-sm font-medium">Daily Average</p>
+                                            <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+                                                <DollarSign className="w-5 h-5 text-green-600" />
+                                            </div>
+                                        </div>
+                                        <p className="text-3xl font-bold text-gray-900">₹{(totalSpent / 30).toFixed(0)}</p>
+                                        <p className="text-xs text-gray-500 mt-1">Per day</p>
+                                    </div>
+                                </div>
+
+                                {/* AI Insights */}
                                 {aiInsights.length > 0 && (
-                                    <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm">
-                                        <div className="flex items-center space-x-2 mb-4">
-                                            <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 flex-shrink-0" />
-                                            <h3 className="text-base sm:text-lg font-bold text-gray-900">AI-Powered Insights</h3>
+                                    <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+                                        <div className="flex items-center space-x-3 mb-4">
+                                            <div className="w-10 h-10 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-xl flex items-center justify-center">
+                                                <Sparkles className="w-5 h-5 text-indigo-600" />
+                                            </div>
+                                            <h3 className="text-xl font-bold text-gray-900">AI-Powered Insights</h3>
                                         </div>
                                         <div className="space-y-3">
                                             {aiInsights.map((insight, idx) => (
-                                                <div key={idx} className="flex items-start space-x-3 p-3 bg-indigo-50 rounded-lg">
-                                                    <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600 mt-0.5 flex-shrink-0" />
-                                                    <p className="text-sm sm:text-base text-gray-700 break-words">{insight}</p>
+                                                <div key={idx} className="flex items-start space-x-3 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-100">
+                                                    <CheckCircle className="w-5 h-5 text-indigo-600 mt-0.5 flex-shrink-0" />
+                                                    <p className="text-gray-700 font-medium">{insight}</p>
                                                 </div>
                                             ))}
                                         </div>
                                     </div>
                                 )}
 
-                                {/* Quick Actions - Mobile Responsive */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                                {/* Quick Actions */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <button
                                         onClick={() => setShowAddExpense(true)}
-                                        className="bg-indigo-600 text-white p-3 sm:p-4 rounded-xl shadow-sm hover:bg-indigo-700 transition flex items-center justify-center space-x-2 text-sm sm:text-base"
+                                        className="p-6 bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 flex items-center justify-center space-x-3"
                                     >
-                                        <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-                                        <span className="font-semibold">Add Expense</span>
+                                        <Plus className="w-6 h-6" />
+                                        <span className="text-lg font-bold">Add Expense</span>
                                     </button>
                                     <button
                                         onClick={handleExport}
-                                        className="bg-white border-2 border-indigo-600 text-indigo-600 p-3 sm:p-4 rounded-xl shadow-sm hover:bg-indigo-50 transition flex items-center justify-center space-x-2 text-sm sm:text-base"
+                                        className="p-6 bg-white border-2 border-indigo-200 text-indigo-600 rounded-2xl shadow-sm hover:shadow-md hover:bg-indigo-50 transition-all duration-200 flex items-center justify-center space-x-3"
                                     >
-                                        <Download className="w-4 h-4 sm:w-5 sm:h-5" />
-                                        <span className="font-semibold">Export Report</span>
+                                        <Download className="w-6 h-6" />
+                                        <span className="text-lg font-bold">Export Report</span>
                                     </button>
                                 </div>
                             </>
@@ -326,12 +369,24 @@ const Dashboard = () => {
                 <ProfileSettings onClose={() => setShowProfileSettings(false)} />
             )}
 
-            <AIFinancialAssistant
-                expenses={expenses}
-                budget={budget}
-            />
+            <AIFinancialAssistant expenses={expenses} budget={budget} />
 
             <style jsx>{`
+                @keyframes shake {
+                    0%, 100% { transform: translateX(0); }
+                    10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+                    20%, 40%, 60%, 80% { transform: translateX(4px); }
+                }
+                .animate-shake {
+                    animation: shake 0.5s;
+                }
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(-10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .animate-fadeIn {
+                    animation: fadeIn 0.3s ease-out;
+                }
                 .scrollbar-hide::-webkit-scrollbar {
                     display: none;
                 }
