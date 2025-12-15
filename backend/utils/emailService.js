@@ -1,16 +1,35 @@
 const nodemailer = require('nodemailer');
 
-// Create transporter
-const transporter = nodemailer.createTransport({
-  service: process.env.EMAIL_SERVICE || 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD
-  }
-});
+// ✅ Check if email credentials are configured
+const isEmailConfigured = () => {
+  return !!(process.env.EMAIL_USER && process.env.EMAIL_PASSWORD);
+};
 
-// Send OTP Email
+if (!isEmailConfigured()) {
+  console.warn('⚠️ WARNING: Email credentials not configured. Email features will be disabled.');
+  console.warn('Set EMAIL_USER and EMAIL_PASSWORD in .env to enable emails.');
+}
+
+// Create transporter only if configured
+let transporter = null;
+if (isEmailConfigured()) {
+  transporter = nodemailer.createTransport({
+    service: process.env.EMAIL_SERVICE || 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASSWORD
+    }
+  });
+}
+
+// ✅ Send OTP Email with validation
 exports.sendOTPEmail = async (email, name, otp) => {
+  if (!isEmailConfigured()) {
+    console.log('📧 [DEV MODE] OTP Email would be sent to:', email);
+    console.log('📧 [DEV MODE] OTP Code:', otp);
+    return; // Don't throw error in development
+  }
+
   const mailOptions = {
     from: `"Smart Expense Tracker" <${process.env.EMAIL_USER}>`,
     to: email,
@@ -69,15 +88,21 @@ exports.sendOTPEmail = async (email, name, otp) => {
 
   try {
     await transporter.sendMail(mailOptions);
-    console.log('OTP email sent successfully to:', email);
+    console.log('✅ OTP email sent successfully to:', email);
   } catch (error) {
-    console.error('Error sending OTP email:', error);
-    throw new Error('Failed to send OTP email');
+    console.error('❌ Error sending OTP email:', error);
+    throw new Error('Failed to send OTP email. Please try again later.');
   }
 };
 
-// Send Budget Alert Email
+// ✅ Send Budget Alert Email with validation
 exports.sendBudgetAlert = async (email, name, alertData) => {
+  if (!isEmailConfigured()) {
+    console.log('📧 [DEV MODE] Budget Alert would be sent to:', email);
+    console.log('📧 [DEV MODE] Alert Data:', alertData);
+    return;
+  }
+
   const { percentage, budgetUsed, totalBudget, level } = alertData;
   
   const alertColors = {
@@ -116,6 +141,7 @@ exports.sendBudgetAlert = async (email, name, alertData) => {
             <p><strong>Remaining:</strong> ₹${totalBudget - budgetUsed}</p>
           </div>
           <p>Consider reviewing your expenses to stay within budget.</p>
+          <p>Best regards,<br>Smart Expense Tracker Team</p>
         </div>
       </body>
       </html>
@@ -124,13 +150,21 @@ exports.sendBudgetAlert = async (email, name, alertData) => {
 
   try {
     await transporter.sendMail(mailOptions);
+    console.log('✅ Budget alert sent to:', email);
   } catch (error) {
-    console.error('Error sending budget alert:', error);
+    console.error('❌ Error sending budget alert:', error);
+    // Don't throw - budget alerts shouldn't break the app
   }
 };
 
-// Send Monthly Report Email
+// ✅ Send Monthly Report Email with validation
 exports.sendMonthlyReport = async (email, name, reportData) => {
+  if (!isEmailConfigured()) {
+    console.log('📧 [DEV MODE] Monthly Report would be sent to:', email);
+    console.log('📧 [DEV MODE] Report Data:', reportData);
+    return;
+  }
+
   const { totalSpent, budget, topCategories, insights } = reportData;
 
   const mailOptions = {
@@ -168,6 +202,7 @@ exports.sendMonthlyReport = async (email, name, reportData) => {
           <ul>
             ${insights.map(insight => `<li>${insight}</li>`).join('')}
           </ul>
+          <p>Best regards,<br>Smart Expense Tracker Team</p>
         </div>
       </body>
       </html>
@@ -176,7 +211,11 @@ exports.sendMonthlyReport = async (email, name, reportData) => {
 
   try {
     await transporter.sendMail(mailOptions);
+    console.log('✅ Monthly report sent to:', email);
   } catch (error) {
-    console.error('Error sending monthly report:', error);
+    console.error('❌ Error sending monthly report:', error);
   }
 };
+
+// Export configuration status
+exports.isEmailConfigured = isEmailConfigured;

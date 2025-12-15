@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, TrendingUp, Users, Download, LogOut, DollarSign, AlertTriangle, CheckCircle, Settings } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { expenseService } from '../../services/expenseService';
@@ -19,6 +19,14 @@ const Dashboard = () => {
     const [groups, setGroups] = useState([]);
     const [showAddExpense, setShowAddExpense] = useState(false);
     const [showProfileSettings, setShowProfileSettings] = useState(false);
+    const [error, setError] = useState('');
+
+    // ✅ Sync budget when user changes
+    useEffect(() => {
+        if (user?.monthlyBudget) {
+            setBudget(user.monthlyBudget);
+        }
+    }, [user]);
 
     // Fetch expenses from backend
     useEffect(() => {
@@ -28,18 +36,32 @@ const Dashboard = () => {
     const fetchExpenses = async () => {
         try {
             setLoading(true);
+            setError('');
             const response = await expenseService.getExpenses();
             setExpenses(response.data || []);
         } catch (error) {
             console.error('Error fetching expenses:', error);
+            setError('Failed to load expenses. Please refresh the page.');
         } finally {
             setLoading(false);
         }
     };
 
-    const totalSpent = expenses.reduce((sum, exp) => sum + exp.amount, 0);
-    const budgetStatus = predictBudgetRisk(expenses, budget);
-    const aiInsights = expenses.length > 0 ? generateAIInsights(expenses) : [];
+    // ✅ Memoized calculations for performance
+    const totalSpent = useMemo(() => 
+        expenses.reduce((sum, exp) => sum + exp.amount, 0), 
+        [expenses]
+    );
+
+    const budgetStatus = useMemo(() => 
+        predictBudgetRisk(expenses, budget), 
+        [expenses, budget]
+    );
+
+    const aiInsights = useMemo(() => 
+        expenses.length > 0 ? generateAIInsights(expenses) : [], 
+        [expenses]
+    );
 
     const handleAddExpense = async (expenseData) => {
         try {
@@ -48,16 +70,50 @@ const Dashboard = () => {
             setShowAddExpense(false);
         } catch (error) {
             console.error('Error adding expense:', error);
-            alert('Failed to add expense. Please try again.');
+            alert(error.response?.data?.error || 'Failed to add expense. Please try again.');
         }
     };
 
+    // ✅ Export expenses functionality
+    const handleExport = async () => {
+        try {
+            const response = await fetch('http://localhost:5000/api/expenses/export?format=csv', {
+                credentials: 'include'
+            });
+            
+            if (!response.ok) throw new Error('Export failed');
+            
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `expenses-${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Export error:', error);
+            alert('Failed to export expenses');
+        }
+    };
+
+    // ✅ Loading skeleton
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-600">Loading your expenses...</p>
+            <div className="min-h-screen bg-gray-50">
+                <nav className="bg-white shadow-sm border-b">
+                    <div className="max-w-7xl mx-auto px-4 py-4">
+                        <div className="h-8 bg-gray-200 rounded w-64 animate-pulse"></div>
+                    </div>
+                </nav>
+                <div className="max-w-7xl mx-auto px-4 py-6 space-y-4">
+                    {[1, 2, 3].map(i => (
+                        <div key={i} className="bg-white p-6 rounded-xl shadow-sm">
+                            <div className="h-6 bg-gray-200 rounded w-3/4 animate-pulse mb-4"></div>
+                            <div className="h-4 bg-gray-200 rounded w-1/2 animate-pulse"></div>
+                        </div>
+                    ))}
                 </div>
             </div>
         );
@@ -93,18 +149,25 @@ const Dashboard = () => {
             </nav>
 
             <div className="max-w-7xl mx-auto px-4 py-6">
-                {/* Tab Navigation */}
-                <div className="flex space-x-2 mb-6 bg-white p-2 rounded-lg shadow-sm">
-                    <button onClick={() => setView('dashboard')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition ${view === 'dashboard' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
+                {/* Error Alert */}
+                {error && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+                        {error}
+                    </div>
+                )}
+
+                {/* Tab Navigation - ✅ Mobile responsive */}
+                <div className="flex space-x-2 mb-6 bg-white p-2 rounded-lg shadow-sm overflow-x-auto">
+                    <button onClick={() => setView('dashboard')} className={`flex-1 min-w-[100px] py-2 px-4 rounded-lg font-medium transition ${view === 'dashboard' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
                         Dashboard
                     </button>
-                    <button onClick={() => setView('expenses')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition ${view === 'expenses' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
+                    <button onClick={() => setView('expenses')} className={`flex-1 min-w-[100px] py-2 px-4 rounded-lg font-medium transition ${view === 'expenses' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
                         Expenses
                     </button>
-                    <button onClick={() => setView('analytics')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition ${view === 'analytics' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
+                    <button onClick={() => setView('analytics')} className={`flex-1 min-w-[100px] py-2 px-4 rounded-lg font-medium transition ${view === 'analytics' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
                         Analytics
                     </button>
-                    <button onClick={() => setView('groups')} className={`flex-1 py-2 px-4 rounded-lg font-medium transition ${view === 'groups' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
+                    <button onClick={() => setView('groups')} className={`flex-1 min-w-[100px] py-2 px-4 rounded-lg font-medium transition ${view === 'groups' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
                         Groups
                     </button>
                 </div>
@@ -138,13 +201,13 @@ const Dashboard = () => {
                                         <AlertTriangle className="w-8 h-8" />
                                     </div>
                                     <div className="bg-white bg-opacity-20 rounded-full h-3 mb-2">
-                                        <div className="bg-white rounded-full h-3" style={{ width: `${Math.min((totalSpent / budget) * 100, 100)}%` }}></div>
+                                        <div className="bg-white rounded-full h-3 transition-all duration-300" style={{ width: `${Math.min((totalSpent / budget) * 100, 100)}%` }}></div>
                                     </div>
                                     <p className="text-sm font-medium">{budgetStatus.message}</p>
                                 </div>
 
                                 {/* Stats Grid */}
-                                <div className="grid grid-cols-3 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div className="bg-white p-6 rounded-xl shadow-sm">
                                         <p className="text-gray-600 text-sm">Total Spent</p>
                                         <p className="text-2xl font-bold text-gray-900 mt-2">₹{totalSpent}</p>
@@ -169,7 +232,7 @@ const Dashboard = () => {
                                         <div className="space-y-3">
                                             {aiInsights.map((insight, idx) => (
                                                 <div key={idx} className="flex items-start space-x-3 p-3 bg-indigo-50 rounded-lg">
-                                                    <CheckCircle className="w-5 h-5 text-indigo-600 mt-0.5" />
+                                                    <CheckCircle className="w-5 h-5 text-indigo-600 mt-0.5 flex-shrink-0" />
                                                     <p className="text-gray-700">{insight}</p>
                                                 </div>
                                             ))}
@@ -178,12 +241,12 @@ const Dashboard = () => {
                                 )}
 
                                 {/* Quick Actions */}
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <button onClick={() => setShowAddExpense(true)} className="bg-indigo-600 text-white p-4 rounded-xl shadow-sm hover:bg-indigo-700 transition flex items-center justify-center space-x-2">
                                         <Plus className="w-5 h-5" />
                                         <span className="font-semibold">Add Expense</span>
                                     </button>
-                                    <button className="bg-white border-2 border-indigo-600 text-indigo-600 p-4 rounded-xl shadow-sm hover:bg-indigo-50 transition flex items-center justify-center space-x-2">
+                                    <button onClick={handleExport} className="bg-white border-2 border-indigo-600 text-indigo-600 p-4 rounded-xl shadow-sm hover:bg-indigo-50 transition flex items-center justify-center space-x-2">
                                         <Download className="w-5 h-5" />
                                         <span className="font-semibold">Export Report</span>
                                     </button>
@@ -206,10 +269,12 @@ const Dashboard = () => {
                     onAddExpense={handleAddExpense}
                 />
             )}
+
             {/* Profile Settings Modal */}
             {showProfileSettings && (
                 <ProfileSettings onClose={() => setShowProfileSettings(false)} />
             )}
+
             {/* AI Chatbot - Floating Button */}
             <AIFinancialAssistant 
                 expenses={expenses} 

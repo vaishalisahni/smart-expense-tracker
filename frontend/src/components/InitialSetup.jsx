@@ -58,8 +58,8 @@ const InitialSetup = ({ onComplete }) => {
         throw new Error(data.error || 'Failed to save setup');
       }
 
-      // ✅ Immediately move to next flow
-      onComplete(data.user); 
+      // ✅ FIXED: Call refresh function from context
+      await onComplete();
 
     } catch (err) {
       setError(err.message || 'Something went wrong');
@@ -83,7 +83,8 @@ const InitialSetup = ({ onComplete }) => {
         throw new Error('Unable to skip setup. Try again.');
       }
 
-      onComplete(data.user); // ✅ skip setup moves to dashboard
+      // ✅ FIXED: Call refresh function
+      await onComplete();
     } catch (err) {
       setError(err.message || 'Unable to skip setup. Try again.');
     }
@@ -94,7 +95,6 @@ const InitialSetup = ({ onComplete }) => {
       case 1:
         return (
           <div className="space-y-6">
-            {/* ... Monthly Income Step UI (unchanged) */}
             <div className="text-center mb-6">
               <div className="bg-indigo-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                 <DollarSign className="w-8 h-8 text-indigo-600" />
@@ -310,7 +310,8 @@ const InitialSetup = ({ onComplete }) => {
           {step > 1 && (
             <button
               onClick={() => setStep(step - 1)}
-              className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition"
+              disabled={loading}
+              className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition disabled:opacity-50"
             >
               Back
             </button>
@@ -319,7 +320,8 @@ const InitialSetup = ({ onComplete }) => {
           {step < 4 ? (
             <button
               onClick={() => setStep(step + 1)}
-              className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-xl font-semibold"
+              disabled={loading}
+              className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition disabled:opacity-50"
             >
               Continue
             </button>
@@ -327,7 +329,7 @@ const InitialSetup = ({ onComplete }) => {
             <button
               onClick={handleSubmit}
               disabled={loading}
-              className="flex-1 px-6 py-3 bg-green-600 text-white rounded-xl font-semibold"
+              className="flex-1 px-6 py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 transition disabled:opacity-50"
             >
               {loading ? 'Saving...' : 'Complete Setup'}
             </button>
@@ -337,7 +339,8 @@ const InitialSetup = ({ onComplete }) => {
         {step === 1 && (
           <button
             onClick={handleSkip}
-            className="w-full mt-4 text-gray-600 text-sm"
+            disabled={loading}
+            className="w-full mt-4 text-gray-600 text-sm hover:text-gray-900 transition disabled:opacity-50"
           >
             Skip setup for now
           </button>

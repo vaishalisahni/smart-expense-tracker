@@ -18,14 +18,19 @@ const App = () => {
 const AuthContent = ({ authView, setAuthView }) => {
   const { user, loading, refreshUser } = useAuth();
 
+  // ✅ Loading state
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        Loading...
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 to-indigo-200">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-700 font-medium">Loading...</p>
+        </div>
       </div>
     );
   }
 
+  // ✅ Not authenticated - show login or register
   if (!user) {
     return authView === 'login' ? (
       <Login onSwitchToRegister={() => setAuthView('register')} />
@@ -34,18 +39,14 @@ const AuthContent = ({ authView, setAuthView }) => {
     );
   }
 
-  // Setup not completed
+  // ✅ FIXED: Setup not completed - show initial setup
   if (!user.setupCompleted) {
     return (
-      <InitialSetup
-        onComplete={async () => {
-          await refreshUser(); // ✅ refresh user from backend
-        }}
-      />
+      <InitialSetup onComplete={refreshUser} />
     );
   }
 
-  // Fully authenticated & setup done
+  // ✅ Fully authenticated & setup done - show dashboard
   return <Dashboard />;
 };
 

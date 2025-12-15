@@ -2,66 +2,85 @@ const User = require('../models/User');
 const Expense = require('../models/Expense');
 const { sendBudgetAlert, sendMonthlyReport } = require('./emailService');
 
+// ✅ Mutex lock to prevent duplicate alerts
+const alertLocks = new Map();
+
 // ===============================
 // Check Budget and Send Alerts
 // ===============================
 exports.checkBudgetAndAlert = async (userId) => {
-  try {
-    const user = await User.findById(userId);
-    if (!user || !user.preferences.emailAlerts) return;
+  // ✅ Prevent duplicate concurrent calls
+  if (alertLocks.has(userId)) {
+    return alertLocks.get(userId);
+  }
 
-    // Get current month expenses
-    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-    const endOfMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
+  const promise = (async () => {
+    try {
+      const user = await User.findById(userId);
+      if (!user || !user.preferences.emailAlerts) {
+        return null;
+      }
 
-    const expenses = await Expense.find({
-      userId,
-      date: { $gte: startOfMonth, $lte: endOfMonth }
-    });
+      // Get current month expenses
+      const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+      const endOfMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
 
-    const totalSpent = expenses.reduce((sum, exp) => sum + exp.amount, 0);
-    const percentage = (totalSpent / user.monthlyBudget) * 100;
-
-    // Determine alert level
-    let alertLevel = null;
-    let alertKey = null;
-
-    if (percentage >= 100 && user.preferences.budgetAlerts.at100 && !user.alertsSent.get('100')) {
-      alertLevel = 'critical';
-      alertKey = '100';
-    } else if (percentage >= 90 && user.preferences.budgetAlerts.at90 && !user.alertsSent.get('90')) {
-      alertLevel = 'danger';
-      alertKey = '90';
-    } else if (percentage >= 70 && user.preferences.budgetAlerts.at70 && !user.alertsSent.get('70')) {
-      alertLevel = 'warning';
-      alertKey = '70';
-    }
-
-    // Send alert if threshold crossed
-    if (alertLevel && alertKey) {
-      await sendBudgetAlert(user.email, user.name, {
-        percentage: Math.round(percentage),
-        budgetUsed: totalSpent,
-        totalBudget: user.monthlyBudget,
-        level: alertLevel
+      const expenses = await Expense.find({
+        userId,
+        date: { $gte: startOfMonth, $lte: endOfMonth }
       });
 
-      // Mark alert as sent
-      user.alertsSent.set(alertKey, true);
-      await user.save();
+      const totalSpent = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+      const percentage = (totalSpent / user.monthlyBudget) * 100;
 
-      console.log(`Budget alert sent to ${user.email} at ${percentage}%`);
+      // Determine alert level
+      let alertLevel = null;
+      let alertKey = null;
+
+      if (percentage >= 100 && user.preferences.budgetAlerts.at100 && !user.alertsSent.get('100')) {
+        alertLevel = 'critical';
+        alertKey = '100';
+      } else if (percentage >= 90 && user.preferences.budgetAlerts.at90 && !user.alertsSent.get('90')) {
+        alertLevel = 'danger';
+        alertKey = '90';
+      } else if (percentage >= 70 && user.preferences.budgetAlerts.at70 && !user.alertsSent.get('70')) {
+        alertLevel = 'warning';
+        alertKey = '70';
+      }
+
+      // Send alert if threshold crossed
+      if (alertLevel && alertKey) {
+        await sendBudgetAlert(user.email, user.name, {
+          percentage: Math.round(percentage),
+          budgetUsed: totalSpent,
+          totalBudget: user.monthlyBudget,
+          level: alertLevel
+        });
+
+        // Mark alert as sent
+        user.alertsSent.set(alertKey, true);
+        await user.save();
+
+        console.log(`✅ Budget alert sent to ${user.email} at ${percentage}%`);
+      }
+
+      return {
+        percentage,
+        totalSpent,
+        budget: user.monthlyBudget,
+        alertSent: !!alertLevel
+      };
+    } catch (error) {
+      console.error('❌ Error checking budget alerts:', error);
+      return null;
+    } finally {
+      // ✅ Release lock
+      alertLocks.delete(userId);
     }
+  })();
 
-    return {
-      percentage,
-      totalSpent,
-      budget: user.monthlyBudget,
-      alertSent: !!alertLevel
-    };
-  } catch (error) {
-    console.error('Error checking budget alerts:', error);
-  }
+  alertLocks.set(userId, promise);
+  return promise;
 };
 
 // ===============================
@@ -70,7 +89,7 @@ exports.checkBudgetAndAlert = async (userId) => {
 exports.checkWeeklyBudget = async (userId) => {
   try {
     const user = await User.findById(userId);
-    if (!user || !user.weeklyBudget) return;
+    if (!user || !user.weeklyBudget) return null;
 
     // Get current week expenses
     const today = new Date();
@@ -92,7 +111,8 @@ exports.checkWeeklyBudget = async (userId) => {
       remaining: user.weeklyBudget - totalSpent
     };
   } catch (error) {
-    console.error('Error checking weekly budget:', error);
+    console.error('❌ Error checking weekly budget:', error);
+    return null;
   }
 };
 
@@ -161,7 +181,7 @@ exports.predictBudgetOverspend = async (userId) => {
       recommendations
     };
   } catch (error) {
-    console.error('Error predicting budget overspend:', error);
+    console.error('❌ Error predicting budget overspend:', error);
     return null;
   }
 };
@@ -221,9 +241,9 @@ exports.sendMonthlyReportToUser = async (userId) => {
     user.lastReportSent = new Date();
     await user.save();
 
-    console.log(`Monthly report sent to ${user.email}`);
+    console.log(`✅ Monthly report sent to ${user.email}`);
   } catch (error) {
-    console.error('Error sending monthly report:', error);
+    console.error('❌ Error sending monthly report:', error);
   }
 };
 
@@ -234,14 +254,16 @@ exports.resetAllMonthlyAlerts = async () => {
   try {
     const users = await User.find({ 'preferences.emailAlerts': true });
     
+    let count = 0;
     for (const user of users) {
       user.alertsSent = new Map();
       await user.save();
+      count++;
     }
     
-    console.log(`Reset alerts for ${users.length} users`);
+    console.log(`✅ Reset alerts for ${count} users`);
   } catch (error) {
-    console.error('Error resetting monthly alerts:', error);
+    console.error('❌ Error resetting monthly alerts:', error);
   }
 };
 
@@ -252,14 +274,16 @@ exports.sendMonthlyReportsToAll = async () => {
   try {
     const users = await User.find({ 'preferences.emailAlerts': true });
     
+    let sent = 0;
     for (const user of users) {
       await exports.sendMonthlyReportToUser(user._id);
       // Add delay to avoid overwhelming email service
       await new Promise(resolve => setTimeout(resolve, 1000));
+      sent++;
     }
     
-    console.log(`Sent monthly reports to ${users.length} users`);
+    console.log(`✅ Sent monthly reports to ${sent} users`);
   } catch (error) {
-    console.error('Error sending monthly reports:', error);
+    console.error('❌ Error sending monthly reports:', error);
   }
 };

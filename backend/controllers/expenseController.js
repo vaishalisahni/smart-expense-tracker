@@ -1,4 +1,5 @@
 const Expense = require('../models/Expense');
+const mongoose = require('mongoose');
 const { categorizeExpenseAI } = require('../utils/aiService');
 const { handleVoiceUpload, handleReceiptUpload } = require('../utils/voiceOcrService');
 const { checkBudgetAndAlert } = require('../utils/budgetAlertService');
@@ -42,6 +43,7 @@ exports.getExpenses = async (req, res) => {
       data: expenses
     });
   } catch (error) {
+    console.error('Get expenses error:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -65,6 +67,7 @@ exports.getExpense = async (req, res) => {
       data: expense
     });
   } catch (error) {
+    console.error('Get expense error:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -73,8 +76,28 @@ exports.getExpense = async (req, res) => {
 // @route   POST /api/expenses
 // @access  Private
 exports.createExpense = async (req, res) => {
+  // ✅ Use transaction for data consistency
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     const { amount, description, category, date, notes, tags, paymentMethod, location } = req.body;
+
+    // ✅ Validate input
+    if (!amount || !description) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ error: 'Amount and description are required' });
+    }
+
+    if (amount <= 0) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ error: 'Amount must be greater than 0' });
+    }
+
+    // ✅ Sanitize description
+    const sanitizedDescription = description.trim().substring(0, 500);
 
     // AI Categorization if no category provided
     let finalCategory = category;
@@ -82,35 +105,43 @@ exports.createExpense = async (req, res) => {
     let aiConfidence = 0;
 
     if (!category || category === 'auto') {
-      const aiResult = categorizeExpenseAI(description, amount);
+      const aiResult = categorizeExpenseAI(sanitizedDescription, amount);
       finalCategory = aiResult.category;
       aiGenerated = true;
       aiConfidence = aiResult.confidence;
     }
 
-    const expense = await Expense.create({
+    const expense = await Expense.create([{
       userId: req.user._id,
-      amount,
-      description,
+      amount: parseFloat(amount),
+      description: sanitizedDescription,
       category: finalCategory,
       date: date || new Date(),
       aiGenerated,
       aiConfidence,
       entryMethod: 'manual',
-      notes,
-      tags,
+      notes: notes?.substring(0, 1000),
+      tags: tags?.slice(0, 10),
       paymentMethod,
-      location
+      location: location?.substring(0, 200)
+    }], { session });
+
+    // Check budget and send alert if needed (don't wait)
+    checkBudgetAndAlert(req.user._id).catch(err => {
+      console.error('Budget alert error:', err);
     });
 
-    // Check budget and send alert if needed
-    await checkBudgetAndAlert(req.user._id);
+    await session.commitTransaction();
+    session.endSession();
 
     res.status(201).json({
       success: true,
-      data: expense
+      data: expense[0]
     });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error('Create expense error:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -146,7 +177,9 @@ exports.createExpenseFromVoice = async (req, res) => {
       aiConfidence: voiceResult.confidence
     });
 
-    await checkBudgetAndAlert(req.user._id);
+    checkBudgetAndAlert(req.user._id).catch(err => {
+      console.error('Budget alert error:', err);
+    });
 
     res.status(201).json({
       success: true,
@@ -154,6 +187,7 @@ exports.createExpenseFromVoice = async (req, res) => {
       transcript: voiceResult.transcript
     });
   } catch (error) {
+    console.error('Voice expense error:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -195,7 +229,9 @@ exports.createExpenseFromReceipt = async (req, res) => {
       aiConfidence: ocrResult.confidence
     });
 
-    await checkBudgetAndAlert(req.user._id);
+    checkBudgetAndAlert(req.user._id).catch(err => {
+      console.error('Budget alert error:', err);
+    });
 
     res.status(201).json({
       success: true,
@@ -203,6 +239,7 @@ exports.createExpenseFromReceipt = async (req, res) => {
       receiptData: ocrResult.receiptData
     });
   } catch (error) {
+    console.error('OCR expense error:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -221,6 +258,14 @@ exports.updateExpense = async (req, res) => {
       return res.status(404).json({ error: 'Expense not found' });
     }
 
+    // ✅ Sanitize updates
+    if (req.body.description) {
+      req.body.description = req.body.description.trim().substring(0, 500);
+    }
+    if (req.body.notes) {
+      req.body.notes = req.body.notes.substring(0, 1000);
+    }
+
     expense = await Expense.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -232,6 +277,7 @@ exports.updateExpense = async (req, res) => {
       data: expense
     });
   } catch (error) {
+    console.error('Update expense error:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -257,6 +303,7 @@ exports.deleteExpense = async (req, res) => {
       message: 'Expense deleted'
     });
   } catch (error) {
+    console.error('Delete expense error:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -268,8 +315,13 @@ exports.bulkDeleteExpenses = async (req, res) => {
   try {
     const { expenseIds } = req.body;
 
-    if (!expenseIds || !Array.isArray(expenseIds)) {
+    if (!expenseIds || !Array.isArray(expenseIds) || expenseIds.length === 0) {
       return res.status(400).json({ error: 'Invalid expense IDs' });
+    }
+
+    // ✅ Limit bulk operations
+    if (expenseIds.length > 100) {
+      return res.status(400).json({ error: 'Cannot delete more than 100 expenses at once' });
     }
 
     const result = await Expense.deleteMany({
@@ -282,6 +334,7 @@ exports.bulkDeleteExpenses = async (req, res) => {
       message: `${result.deletedCount} expenses deleted`
     });
   } catch (error) {
+    console.error('Bulk delete error:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -364,6 +417,7 @@ exports.getAnalytics = async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('Analytics error:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -403,6 +457,7 @@ exports.getSpendingTrends = async (req, res) => {
       data: monthlyTrend
     });
   } catch (error) {
+    console.error('Trends error:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -426,12 +481,15 @@ exports.exportExpenses = async (req, res) => {
     if (format === 'csv') {
       // Convert to CSV
       const csvHeader = 'Date,Description,Category,Amount,Payment Method,Notes\n';
-      const csvData = expenses.map(exp => 
-        `${exp.date.toISOString().split('T')[0]},"${exp.description}",${exp.category},${exp.amount},${exp.paymentMethod || ''},"${exp.notes || ''}"`
-      ).join('\n');
+      const csvData = expenses.map(exp => {
+        const date = exp.date.toISOString().split('T')[0];
+        const desc = `"${(exp.description || '').replace(/"/g, '""')}"`;
+        const notes = `"${(exp.notes || '').replace(/"/g, '""')}"`;
+        return `${date},${desc},${exp.category},${exp.amount},${exp.paymentMethod || ''},${notes}`;
+      }).join('\n');
 
       res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', 'attachment; filename=expenses.csv');
+      res.setHeader('Content-Disposition', `attachment; filename=expenses-${new Date().toISOString().split('T')[0]}.csv`);
       res.send(csvHeader + csvData);
     } else {
       // Return JSON
@@ -442,6 +500,7 @@ exports.exportExpenses = async (req, res) => {
       });
     }
   } catch (error) {
+    console.error('Export error:', error);
     res.status(500).json({ error: error.message });
   }
 };
