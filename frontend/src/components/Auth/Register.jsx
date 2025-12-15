@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DollarSign, Mail, Lock, User, ArrowRight, Shield } from 'lucide-react';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 const Register = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
@@ -64,7 +66,7 @@ const Register = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/request-otp', {
+      const response = await fetch(`${API_URL}/auth/request-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -114,7 +116,7 @@ const Register = () => {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/verify-otp', {
+      const response = await fetch(`${API_URL}/auth/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -148,7 +150,7 @@ const Register = () => {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/resend-otp', {
+      const response = await fetch(`${API_URL}/auth/resend-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: formData.email })
