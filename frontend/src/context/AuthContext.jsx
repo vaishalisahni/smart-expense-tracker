@@ -5,7 +5,9 @@ const AuthContext = createContext(null);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within AuthProvider');
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
   return context;
 };
 
@@ -13,25 +15,28 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ✅ On page refresh → check session
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await authService.getMe();
-        setUser(response.user);
-      } catch (error) {
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // ✅ Fetch logged-in user (session check)
+  const refreshUser = async () => {
+    try {
+      const response = await authService.getMe();
+      setUser(response.user);
+    } catch (error) {
+      setUser(null);
+    }
+  };
 
-    checkAuth();
+  // ✅ On page load
+  useEffect(() => {
+    const initAuth = async () => {
+      await refreshUser();
+      setLoading(false);
+    };
+    initAuth();
   }, []);
 
   const login = async (email, password) => {
     const response = await authService.login(email, password);
-    setUser(response.user); // cookie already set by backend
+    setUser(response.user);
   };
 
   const register = async (name, email, password) => {
@@ -45,7 +50,16 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        register,
+        logout,
+        refreshUser, // ✅ EXPOSE THIS
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

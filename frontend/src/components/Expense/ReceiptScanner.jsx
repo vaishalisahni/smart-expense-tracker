@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Camera, Upload, X, AlertCircle, CheckCircle, FileImage } from 'lucide-react';
+import api from '../../services/api';
 
 const ReceiptScanner = ({ onClose, onExpenseData }) => {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -13,22 +14,19 @@ const ReceiptScanner = ({ onClose, onExpenseData }) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
-      setError('Please select a valid image file (JPG, PNG)');
+      setError('Please select a valid image file (JPG, PNG, WebP)');
       return;
     }
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setError('File size must be less than 5MB');
+    if (file.size > 10 * 1024 * 1024) {
+      setError('File size must be less than 10MB');
       return;
     }
 
     setSelectedFile(file);
     setError('');
 
-    // Create preview
     const reader = new FileReader();
     reader.onloadend = () => {
       setPreview(reader.result);
@@ -49,22 +47,18 @@ const ReceiptScanner = ({ onClose, onExpenseData }) => {
       const formData = new FormData();
       formData.append('receipt', selectedFile);
 
-      const response = await fetch('http://localhost:5000/api/expenses/ocr', {
-        method: 'POST',
-        credentials: 'include',
-        body: formData
+      const response = await api.post('/expenses/ocr-process', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      const data = await response.json();
-
-      if (data.success) {
-        setExtractedData(data.data);
+      if (response.data.success) {
+        setExtractedData(response.data.receiptData);
       } else {
-        setError(data.error || 'Failed to process receipt');
+        setError(response.data.error || 'Failed to process receipt');
       }
     } catch (err) {
-      setError('Network error. Please try again.');
       console.error('Error processing receipt:', err);
+      setError(err.response?.data?.error || 'Network error. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -104,7 +98,6 @@ const ReceiptScanner = ({ onClose, onExpenseData }) => {
           </div>
         )}
 
-        {/* Upload Interface */}
         {!preview && (
           <div className="space-y-4">
             <div
@@ -119,7 +112,7 @@ const ReceiptScanner = ({ onClose, onExpenseData }) => {
                 Click to browse or drag and drop
               </p>
               <p className="text-xs text-gray-500">
-                Supports: JPG, PNG (Max 5MB)
+                Supports: JPG, PNG, WebP (Max 10MB)
               </p>
             </div>
 
@@ -140,7 +133,10 @@ const ReceiptScanner = ({ onClose, onExpenseData }) => {
                 <span>Upload Image</span>
               </button>
               <button
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => {
+                  fileInputRef.current.setAttribute('capture', 'environment');
+                  fileInputRef.current?.click();
+                }}
                 className="flex items-center justify-center space-x-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
               >
                 <Camera className="w-5 h-5" />
@@ -148,7 +144,6 @@ const ReceiptScanner = ({ onClose, onExpenseData }) => {
               </button>
             </div>
 
-            {/* Instructions */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h4 className="font-semibold text-blue-900 mb-2">📸 Tips for best results:</h4>
               <ul className="text-sm text-blue-800 space-y-1">
@@ -161,10 +156,8 @@ const ReceiptScanner = ({ onClose, onExpenseData }) => {
           </div>
         )}
 
-        {/* Preview & Processing */}
         {preview && (
           <div className="space-y-4">
-            {/* Image Preview */}
             <div className="border border-gray-300 rounded-lg overflow-hidden">
               <img
                 src={preview}
@@ -173,7 +166,6 @@ const ReceiptScanner = ({ onClose, onExpenseData }) => {
               />
             </div>
 
-            {/* Extracted Data */}
             {extractedData && (
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-3">
                 <div className="flex items-center space-x-2 mb-2">
@@ -199,7 +191,7 @@ const ReceiptScanner = ({ onClose, onExpenseData }) => {
                   <div className="bg-white rounded-lg p-3">
                     <p className="text-xs text-gray-600 mb-1">Merchant</p>
                     <p className="text-sm font-medium text-gray-900">
-                      {extractedData.receiptData?.merchantName || 'Unknown'}
+                      {extractedData.merchantName || 'Unknown'}
                     </p>
                   </div>
 
@@ -217,24 +209,9 @@ const ReceiptScanner = ({ onClose, onExpenseData }) => {
                     {extractedData.description || 'No description'}
                   </p>
                 </div>
-
-                {extractedData.receiptData?.ocrConfidence && (
-                  <div className="flex items-center space-x-2 text-xs text-green-700">
-                    <div className="flex-1 bg-green-200 rounded-full h-2">
-                      <div
-                        className="bg-green-600 h-2 rounded-full"
-                        style={{ width: `${extractedData.receiptData.ocrConfidence * 100}%` }}
-                      ></div>
-                    </div>
-                    <span className="font-medium">
-                      {Math.round(extractedData.receiptData.ocrConfidence * 100)}% confidence
-                    </span>
-                  </div>
-                )}
               </div>
             )}
 
-            {/* Action Buttons */}
             <div className="flex space-x-3">
               <button
                 onClick={resetScanner}
@@ -261,7 +238,6 @@ const ReceiptScanner = ({ onClose, onExpenseData }) => {
               )}
             </div>
 
-            {/* Processing Status */}
             {loading && (
               <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 flex items-center space-x-3">
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div>
@@ -273,7 +249,6 @@ const ReceiptScanner = ({ onClose, onExpenseData }) => {
           </div>
         )}
 
-        {/* Technology Note */}
         <div className="mt-6 bg-amber-50 border border-amber-200 rounded-lg p-3">
           <p className="text-xs text-amber-800">
             <strong>🤖 AI-Powered:</strong> Uses OCR technology to extract text from receipts. 

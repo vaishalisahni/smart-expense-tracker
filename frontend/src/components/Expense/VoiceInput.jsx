@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Mic, StopCircle, X, AlertCircle, CheckCircle } from 'lucide-react';
+import api from '../../services/api';
 
 const VoiceInput = ({ onClose, onExpenseData }) => {
   const [isRecording, setIsRecording] = useState(false);
@@ -9,23 +10,21 @@ const VoiceInput = ({ onClose, onExpenseData }) => {
   const [extractedData, setExtractedData] = useState(null);
   const recognitionRef = useRef(null);
 
-  // Check browser support
   const isSpeechSupported = () => {
     return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
   };
 
   const startRecording = () => {
     if (!isSpeechSupported()) {
-      setError('Speech recognition not supported in this browser. Please use Chrome, Edge, or Safari.');
+      setError('Speech recognition not supported. Please use Chrome, Edge, or Safari.');
       return;
     }
 
     try {
-      // Create speech recognition instance
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       const recognition = new SpeechRecognition();
 
-      recognition.lang = 'en-IN'; // Indian English
+      recognition.lang = 'en-IN';
       recognition.continuous = false;
       recognition.interimResults = false;
       recognition.maxAlternatives = 1;
@@ -40,8 +39,6 @@ const VoiceInput = ({ onClose, onExpenseData }) => {
         const speechResult = event.results[0][0].transcript;
         setTranscript(speechResult);
         setIsRecording(false);
-        
-        // Process the transcript
         await processTranscript(speechResult);
       };
 
@@ -82,23 +79,18 @@ const VoiceInput = ({ onClose, onExpenseData }) => {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/expenses/voice-process', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ transcript: text })
+      const response = await api.post('/expenses/voice-process', { 
+        transcript: text 
       });
 
-      const data = await response.json();
-
-      if (data.success) {
-        setExtractedData(data.expenseData);
+      if (response.data.success) {
+        setExtractedData(response.data.expenseData);
       } else {
-        setError(data.error || 'Failed to process voice input');
+        setError(response.data.error || 'Failed to process voice input');
       }
     } catch (err) {
-      setError('Network error. Please try again.');
       console.error('Processing error:', err);
+      setError(err.response?.data?.error || 'Network error. Please try again.');
     } finally {
       setLoading(false);
     }

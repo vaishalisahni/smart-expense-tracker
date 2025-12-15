@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { AuthProvider } from './context/AuthContext';
-import { useAuth } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
 import InitialSetup from './components/InitialSetup';
@@ -8,7 +7,7 @@ import Dashboard from './components/Dashboard/DashboardHome';
 
 const App = () => {
   const [authView, setAuthView] = useState('login');
-  
+
   return (
     <AuthProvider>
       <AuthContent authView={authView} setAuthView={setAuthView} />
@@ -17,21 +16,16 @@ const App = () => {
 };
 
 const AuthContent = ({ authView, setAuthView }) => {
-  const { user, loading } = useAuth();
-  const [setupComplete, setSetupComplete] = useState(false);
+  const { user, loading, refreshUser } = useAuth();
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        Loading...
       </div>
     );
   }
 
-  // Not logged in - show auth screens
   if (!user) {
     return authView === 'login' ? (
       <Login onSwitchToRegister={() => setAuthView('register')} />
@@ -40,15 +34,18 @@ const AuthContent = ({ authView, setAuthView }) => {
     );
   }
 
-  // Logged in but setup not complete - show initial setup
-  if (!user.setupCompleted && !setupComplete) {
-    return <InitialSetup onComplete={() => {
-      setSetupComplete(true);
-      window.location.reload(); // Reload to fetch updated user data
-    }} />;
+  // Setup not completed
+  if (!user.setupCompleted) {
+    return (
+      <InitialSetup
+        onComplete={async () => {
+          await refreshUser(); // ✅ refresh user from backend
+        }}
+      />
+    );
   }
 
-  // All good - show dashboard
+  // Fully authenticated & setup done
   return <Dashboard />;
 };
 

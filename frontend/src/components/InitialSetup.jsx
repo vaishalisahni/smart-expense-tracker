@@ -29,7 +29,7 @@ const InitialSetup = ({ onComplete }) => {
     setError('');
 
     try {
-      const monthlyBudget = parseFloat(formData.monthlyIncome) * 0.8; // 80% for expenses, 20% for savings
+      const monthlyBudget = parseFloat(formData.monthlyIncome) * 0.8;
       const weeklyBudget = monthlyBudget / 4;
 
       const response = await fetch('http://localhost:5000/api/auth/profile', {
@@ -40,20 +40,13 @@ const InitialSetup = ({ onComplete }) => {
           monthlyBudget,
           weeklyBudget,
           preferences: {
-            currency: formData.currency,
-            notifications: true,
-            emailAlerts: true,
-            budgetAlerts: {
-              at70: true,
-              at90: true,
-              at100: true
-            }
+            currency: formData.currency
           },
           savingsGoals: [{
             name: formData.savingsGoal,
-            targetAmount: parseFloat(formData.goalAmount),
+            targetAmount: Number(formData.goalAmount),
             currentAmount: 0,
-            monthlyContribution: parseFloat(formData.monthlyIncome) * 0.2
+            monthlyContribution: Number(formData.monthlyIncome) * 0.2
           }],
           setupCompleted: true
         })
@@ -61,15 +54,38 @@ const InitialSetup = ({ onComplete }) => {
 
       const data = await response.json();
 
-      if (data.success) {
-        onComplete();
-      } else {
-        setError(data.error || 'Failed to save settings');
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to save setup');
       }
+
+      // ✅ Immediately move to next flow
+      onComplete(data.user); 
+
     } catch (err) {
-      setError('Network error. Please try again.');
+      setError(err.message || 'Something went wrong');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSkip = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ setupCompleted: true })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error('Unable to skip setup. Try again.');
+      }
+
+      onComplete(data.user); // ✅ skip setup moves to dashboard
+    } catch (err) {
+      setError(err.message || 'Unable to skip setup. Try again.');
     }
   };
 
@@ -78,6 +94,7 @@ const InitialSetup = ({ onComplete }) => {
       case 1:
         return (
           <div className="space-y-6">
+            {/* ... Monthly Income Step UI (unchanged) */}
             <div className="text-center mb-6">
               <div className="bg-indigo-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                 <DollarSign className="w-8 h-8 text-indigo-600" />
@@ -298,14 +315,11 @@ const InitialSetup = ({ onComplete }) => {
               Back
             </button>
           )}
+
           {step < 4 ? (
             <button
               onClick={() => setStep(step + 1)}
-              disabled={
-                (step === 1 && !formData.monthlyIncome) ||
-                (step === 3 && (!formData.savingsGoal || !formData.goalAmount))
-              }
-              className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-xl font-semibold"
             >
               Continue
             </button>
@@ -313,28 +327,17 @@ const InitialSetup = ({ onComplete }) => {
             <button
               onClick={handleSubmit}
               disabled={loading}
-              className="flex-1 px-6 py-3 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 transition disabled:opacity-50 flex items-center justify-center space-x-2"
+              className="flex-1 px-6 py-3 bg-green-600 text-white rounded-xl font-semibold"
             >
-              {loading ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  <span>Saving...</span>
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="w-5 h-5" />
-                  <span>Complete Setup</span>
-                </>
-              )}
+              {loading ? 'Saving...' : 'Complete Setup'}
             </button>
           )}
         </div>
 
-        {/* Skip Option (only on first step) */}
         {step === 1 && (
           <button
-            onClick={onComplete}
-            className="w-full mt-4 text-gray-600 text-sm hover:text-gray-900 transition"
+            onClick={handleSkip}
+            className="w-full mt-4 text-gray-600 text-sm"
           >
             Skip setup for now
           </button>

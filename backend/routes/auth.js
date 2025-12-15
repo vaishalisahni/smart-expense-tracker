@@ -8,7 +8,8 @@ const {
   logout, 
   getMe,
   updateProfile,
-  changePassword
+  changePassword,
+  refreshToken
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 
@@ -19,6 +20,7 @@ router.post('/resend-otp', resendOTP);
 
 // Auth Routes
 router.post('/login', login);
+router.post('/refresh-token', refreshToken); // ✅ Added missing route
 router.post('/logout', protect, logout);
 router.get('/me', protect, getMe);
 router.put('/profile', protect, updateProfile);
