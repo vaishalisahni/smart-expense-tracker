@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Mic, StopCircle, X, AlertCircle, CheckCircle } from 'lucide-react';
+import { Mic, StopCircle, X, AlertCircle, CheckCircle, Sparkles, RefreshCw } from 'lucide-react';
 import api from '../../services/api';
 
 const VoiceInput = ({ onClose, onExpenseData }) => {
@@ -33,6 +33,7 @@ const VoiceInput = ({ onClose, onExpenseData }) => {
         setIsRecording(true);
         setError('');
         setTranscript('');
+        setExtractedData(null);
       };
 
       recognition.onresult = async (event) => {
@@ -103,44 +104,66 @@ const VoiceInput = ({ onClose, onExpenseData }) => {
     }
   };
 
+  const handleRetry = () => {
+    setTranscript('');
+    setExtractedData(null);
+    setError('');
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-md">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-bold text-gray-900">Voice Input</h3>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-50 animate-fadeIn">
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 w-full max-w-md shadow-2xl border border-gray-100 max-h-[95vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-4 sm:mb-6">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
+              <Mic className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+            </div>
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900">Voice Input</h3>
+          </div>
+          <button 
+            onClick={onClose} 
+            className="p-2 hover:bg-gray-100 rounded-lg transition"
+            aria-label="Close"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
+        {/* Browser Support Check */}
         {!isSpeechSupported() && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
-            Speech recognition is not supported in your browser. Please use Chrome, Edge, or Safari.
-          </div>
-        )}
-
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 flex items-start space-x-2">
+          <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg mb-4 flex items-start space-x-2">
             <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-            <span className="text-sm">{error}</span>
+            <span className="text-xs sm:text-sm">
+              Speech recognition is not supported in your browser. Please use Chrome, Edge, or Safari.
+            </span>
           </div>
         )}
 
-        <div className="flex flex-col items-center space-y-6">
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg mb-4 flex items-start space-x-2 animate-shake">
+            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            <span className="text-xs sm:text-sm">{error}</span>
+          </div>
+        )}
+
+        <div className="flex flex-col items-center space-y-4 sm:space-y-6">
+          {/* Recording Button */}
           <div className="relative">
             <button
               onClick={isRecording ? stopRecording : startRecording}
               disabled={loading || !isSpeechSupported()}
-              className={`w-24 h-24 rounded-full flex items-center justify-center transition-all transform ${
+              className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center transition-all transform ${
                 isRecording
-                  ? 'bg-red-500 hover:bg-red-600 animate-pulse'
-                  : 'bg-indigo-600 hover:bg-indigo-700 hover:scale-105'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  ? 'bg-gradient-to-br from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 animate-pulse'
+                  : 'bg-gradient-to-br from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 hover:scale-110'
+              } disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl`}
             >
               {isRecording ? (
-                <StopCircle className="w-12 h-12 text-white" />
+                <StopCircle className="w-10 h-10 sm:w-12 sm:h-12 text-white" />
               ) : (
-                <Mic className="w-12 h-12 text-white" />
+                <Mic className="w-10 h-10 sm:w-12 sm:h-12 text-white" />
               )}
             </button>
             {isRecording && (
@@ -148,28 +171,52 @@ const VoiceInput = ({ onClose, onExpenseData }) => {
             )}
           </div>
 
+          {/* Status Text */}
           <div className="text-center">
             {isRecording && (
-              <p className="text-lg font-medium text-red-600 animate-pulse">
-                Listening... Speak now!
-              </p>
+              <div className="space-y-2">
+                <p className="text-base sm:text-lg font-bold text-red-600 animate-pulse">
+                  🎤 Listening... Speak now!
+                </p>
+                <p className="text-xs sm:text-sm text-gray-600">
+                  Tap the button to stop recording
+                </p>
+              </div>
             )}
             {loading && (
-              <p className="text-lg font-medium text-indigo-600">
-                Processing speech...
-              </p>
+              <div className="space-y-2">
+                <div className="flex items-center justify-center space-x-2">
+                  <div className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                  <p className="text-base sm:text-lg font-medium text-indigo-600">
+                    Processing speech...
+                  </p>
+                </div>
+                <p className="text-xs sm:text-sm text-gray-600">
+                  Our AI is analyzing your input
+                </p>
+              </div>
             )}
             {!isRecording && !loading && !transcript && (
-              <p className="text-gray-600">
-                Click the microphone to start
-              </p>
+              <div className="space-y-2">
+                <p className="text-sm sm:text-base text-gray-600">
+                  Click the microphone to start
+                </p>
+                <div className="flex items-center justify-center space-x-1 text-xs text-gray-500">
+                  <Sparkles className="w-3 h-3" />
+                  <span>AI-powered voice recognition</span>
+                </div>
+              </div>
             )}
           </div>
 
+          {/* Instructions (when idle) */}
           {!isRecording && !loading && !transcript && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 w-full">
-              <h4 className="font-semibold text-blue-900 mb-2">💬 Example phrases:</h4>
-              <ul className="text-sm text-blue-800 space-y-1">
+            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-3 sm:p-4 w-full">
+              <h4 className="font-semibold text-blue-900 mb-2 text-sm sm:text-base flex items-center gap-2">
+                <Sparkles className="w-4 h-4" />
+                💬 Example phrases:
+              </h4>
+              <ul className="text-xs sm:text-sm text-blue-800 space-y-1">
                 <li>• "Spent 150 rupees on lunch"</li>
                 <li>• "Paid 500 for textbooks"</li>
                 <li>• "50 rupees bus ticket"</li>
@@ -178,41 +225,65 @@ const VoiceInput = ({ onClose, onExpenseData }) => {
             </div>
           )}
 
+          {/* Transcript and Extracted Data */}
           {transcript && (
-            <div className="w-full space-y-4">
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <p className="text-sm font-medium text-gray-700 mb-2">📝 You said:</p>
-                <p className="text-gray-900 italic">"{transcript}"</p>
+            <div className="w-full space-y-3 sm:space-y-4">
+              {/* Transcript Display */}
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 sm:p-4">
+                <p className="text-xs sm:text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                  <Mic className="w-4 h-4" />
+                  📝 You said:
+                </p>
+                <p className="text-gray-900 italic text-sm sm:text-base">"{transcript}"</p>
               </div>
 
+              {/* Extracted Data */}
               {extractedData && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-2">
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-3 sm:p-4 space-y-2 sm:space-y-3">
                   <div className="flex items-center space-x-2 mb-2">
                     <CheckCircle className="w-5 h-5 text-green-600" />
-                    <p className="font-semibold text-green-900">Extracted:</p>
+                    <p className="font-semibold text-green-900 text-sm sm:text-base">Extracted Information:</p>
                   </div>
-                  <div className="space-y-1 text-sm text-green-800">
-                    <p><strong>Amount:</strong> ₹{extractedData.amount}</p>
-                    <p><strong>Description:</strong> {extractedData.description}</p>
-                    <p><strong>Category:</strong> {extractedData.category}</p>
+
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                    <div className="bg-white rounded-lg p-2.5 sm:p-3 border border-green-200">
+                      <p className="text-xs text-gray-600 mb-1">Amount</p>
+                      <p className="text-base sm:text-lg font-bold text-gray-900">
+                        ₹{extractedData.amount || 'Not found'}
+                      </p>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-2.5 sm:p-3 border border-green-200">
+                      <p className="text-xs text-gray-600 mb-1">Category</p>
+                      <p className="text-base sm:text-lg font-bold text-gray-900 capitalize">
+                        {extractedData.category || 'others'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-lg p-2.5 sm:p-3 border border-green-200">
+                    <p className="text-xs text-gray-600 mb-1">Description</p>
+                    <p className="text-sm text-gray-900">
+                      {extractedData.description || 'No description'}
+                    </p>
                   </div>
                 </div>
               )}
 
-              <div className="flex space-x-3">
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
                 <button
-                  onClick={() => {
-                    setTranscript('');
-                    setExtractedData(null);
-                  }}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                  onClick={handleRetry}
+                  className="flex-1 flex items-center justify-center space-x-2 px-4 py-2.5 sm:py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition font-semibold text-sm sm:text-base"
                 >
-                  Try Again
+                  <RefreshCw className="w-4 h-4" />
+                  <span>{extractedData ? 'Try Again' : 'Retry'}</span>
                 </button>
+
                 {extractedData && (
                   <button
                     onClick={handleConfirm}
-                    className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+                    className="flex-1 px-4 py-2.5 sm:py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition font-semibold text-sm sm:text-base shadow-lg"
                   >
                     Add Expense
                   </button>
@@ -222,12 +293,34 @@ const VoiceInput = ({ onClose, onExpenseData }) => {
           )}
         </div>
 
-        <div className="mt-6 bg-amber-50 border border-amber-200 rounded-lg p-3">
-          <p className="text-xs text-amber-800">
-            <strong>💡 Tip:</strong> Speak clearly and include the amount, what you bought, and optionally where you bought it.
-          </p>
+        {/* Pro Tip */}
+        <div className="mt-4 sm:mt-6 bg-amber-50 border border-amber-200 rounded-xl p-3">
+          <div className="flex items-start space-x-2">
+            <Sparkles className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-800">
+              <strong>💡 Pro Tip:</strong> Speak clearly and include the amount, what you bought, and optionally where you bought it for best results.
+            </p>
+          </div>
         </div>
       </div>
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+          20%, 40%, 60%, 80% { transform: translateX(4px); }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.2s ease-out;
+        }
+        .animate-shake {
+          animation: shake 0.5s;
+        }
+      `}</style>
     </div>
   );
 };
