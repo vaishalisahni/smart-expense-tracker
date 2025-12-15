@@ -1,66 +1,108 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import Login from './components/Auth/Login';
-import Register from './components/Auth/Register';
-import InitialSetup from './components/InitialSetup';
-import Dashboard from './components/Dashboard/DashboardHome';
+import React from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+
+// Auth pages
+import Login from "./components/Auth/Login";
+import Register from "./components/Auth/Register";
+
+// App pages
+import InitialSetup from "./components/InitialSetup";
+import Dashboard from "./components/Dashboard/DashboardHome";
 
 const App = () => {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-          <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
-          <Route path="/setup" element={<ProtectedRoute requireSetup={false}><InitialSetup /></ProtectedRoute>} />
-          <Route path="/dashboard/*" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </BrowserRouter>
+      <Routes>
+        {/* Public Routes */}
+        <Route
+          path="/login"
+          element={
+            <PublicRoute>
+              <Login />
+            </PublicRoute>
+          }
+        />
+
+        <Route
+          path="/register"
+          element={
+            <PublicRoute>
+              <Register />
+            </PublicRoute>
+          }
+        />
+
+        {/* Initial Setup */}
+        <Route
+          path="/setup"
+          element={
+            <ProtectedRoute requireSetup={false}>
+              <InitialSetup />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Dashboard (Protected & Nested) */}
+        <Route
+          path="/dashboard/*"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Root Redirect */}
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+        {/* 404 Redirect */}
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
     </AuthProvider>
   );
 };
 
-// Public routes - redirect to dashboard if authenticated
+export default App;
+
+//////////////////////////////
+// Route Guards
+//////////////////////////////
+
+// Public routes → redirect if authenticated
 const PublicRoute = ({ children }) => {
   const { user, loading } = useAuth();
 
-  if (loading) {
-    return <LoadingScreen />;
-  }
+  if (loading) return <LoadingScreen />;
 
   if (user) {
-    // If user hasn't completed setup, redirect to setup
+    // User logged in but setup not done
     if (!user.setupCompleted) {
       return <Navigate to="/setup" replace />;
     }
-    // Otherwise redirect to dashboard
+    // Fully authenticated
     return <Navigate to="/dashboard" replace />;
   }
 
   return children;
 };
 
-// Protected routes - require authentication
+// Protected routes → require auth
 const ProtectedRoute = ({ children, requireSetup = true }) => {
   const { user, loading } = useAuth();
 
-  if (loading) {
-    return <LoadingScreen />;
-  }
+  if (loading) return <LoadingScreen />;
 
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  // If setup is required but not completed, redirect to setup
+  // Require setup but not completed
   if (requireSetup && !user.setupCompleted) {
     return <Navigate to="/setup" replace />;
   }
 
-  // If setup is completed but on setup page, redirect to dashboard
+  // Setup page but already completed
   if (!requireSetup && user.setupCompleted) {
     return <Navigate to="/dashboard" replace />;
   }
@@ -68,7 +110,10 @@ const ProtectedRoute = ({ children, requireSetup = true }) => {
   return children;
 };
 
-// Loading screen component
+//////////////////////////////
+// Loading Screen
+//////////////////////////////
+
 const LoadingScreen = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 to-indigo-200">
@@ -79,5 +124,3 @@ const LoadingScreen = () => {
     </div>
   );
 };
-
-export default App;

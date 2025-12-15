@@ -1,20 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DollarSign, Target, TrendingUp, CheckCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const InitialSetup = () => {
   const navigate = useNavigate();
-  const { refreshUser } = useAuth();
-  const [step, setStep] = useState(1);
+  const { refreshUser, updateUser } = useAuth();
+
+  // ✅ Preserve step on remount
+  const [step, setStep] = useState(() => {
+    return Number(sessionStorage.getItem('setupStep')) || 1;
+  });
+
   const [formData, setFormData] = useState({
     monthlyIncome: '',
     currency: 'INR',
     savingsGoal: '',
     goalAmount: ''
   });
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    sessionStorage.setItem('setupStep', step);
+  }, [step]);
 
   const currencies = [
     { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
@@ -56,9 +66,14 @@ const InitialSetup = () => {
         throw new Error(data.error || 'Failed to save setup');
       }
 
-      // ✅ Refresh user data and navigate
-      await refreshUser();
+      // ✅ OPTIMISTIC UPDATE (CRITICAL FIX)
+      updateUser({ setupCompleted: true });
+
+      sessionStorage.removeItem('setupStep');
       navigate('/dashboard', { replace: true });
+
+      // Background sync
+      refreshUser();
 
     } catch (err) {
       setError(err.message || 'Something went wrong');
@@ -69,7 +84,7 @@ const InitialSetup = () => {
   const handleSkip = async () => {
     setLoading(true);
     setError('');
-    
+
     try {
       const response = await fetch('http://localhost:5000/api/auth/profile', {
         method: 'PUT',
@@ -84,10 +99,15 @@ const InitialSetup = () => {
         throw new Error('Unable to skip setup. Try again.');
       }
 
-      // ✅ Refresh user data and navigate
-      await refreshUser();
+      // ✅ OPTIMISTIC UPDATE (CRITICAL FIX)
+      updateUser({ setupCompleted: true });
+
+      sessionStorage.removeItem('setupStep');
       navigate('/dashboard', { replace: true });
-      
+
+      // Background sync
+      refreshUser();
+
     } catch (err) {
       setError(err.message || 'Unable to skip setup. Try again.');
       setLoading(false);
@@ -290,13 +310,15 @@ const InitialSetup = () => {
         <div className="mb-8">
           <div className="flex justify-between mb-2">
             <span className="text-sm font-medium text-gray-600">Step {step} of 4</span>
-            <span className="text-sm font-medium text-indigo-600">{Math.round((step / 4) * 100)}%</span>
+            <span className="text-sm font-medium text-indigo-600">
+              {Math.round((step / 4) * 100)}%
+            </span>
           </div>
           <div className="bg-gray-200 rounded-full h-2">
             <div
               className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
               style={{ width: `${(step / 4) * 100}%` }}
-            ></div>
+            />
           </div>
         </div>
 
@@ -306,10 +328,8 @@ const InitialSetup = () => {
           </div>
         )}
 
-        {/* Step Content */}
         {renderStep()}
 
-        {/* Navigation Buttons */}
         <div className="flex gap-3 mt-8">
           {step > 1 && (
             <button

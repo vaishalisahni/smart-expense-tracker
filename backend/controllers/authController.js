@@ -321,13 +321,15 @@ exports.getMe = async (req, res) => {
 // ===============================
 exports.updateProfile = async (req, res) => {
   try {
-    const { name, monthlyBudget, weeklyBudget, preferences } = req.body;
+    const { name, monthlyBudget, weeklyBudget, preferences, setupCompleted, savingsGoals } = req.body;
 
     const updateData = {};
     if (name) updateData.name = name;
     if (monthlyBudget !== undefined) updateData.monthlyBudget = monthlyBudget;
     if (weeklyBudget !== undefined) updateData.weeklyBudget = weeklyBudget;
     if (preferences) updateData.preferences = preferences;
+    if (setupCompleted !== undefined) updateData.setupCompleted = setupCompleted;
+    if (savingsGoals) updateData.savingsGoals = savingsGoals;
 
     const user = await User.findByIdAndUpdate(
       req.user._id,

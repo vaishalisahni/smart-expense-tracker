@@ -25,6 +25,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // ✅ NEW: Optimistic local update (CRITICAL)
+  const updateUser = (updates) => {
+    setUser(prev => ({
+      ...prev,
+      ...updates,
+    }));
+  };
+
   // ✅ On page load
   useEffect(() => {
     const initAuth = async () => {
@@ -57,7 +65,8 @@ export const AuthProvider = ({ children }) => {
         login,
         register,
         logout,
-        refreshUser, // ✅ EXPOSE THIS
+        refreshUser,
+        updateUser, // ✅ EXPOSE THIS
       }}
     >
       {children}
