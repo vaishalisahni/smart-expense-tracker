@@ -1,231 +1,337 @@
-const axios = require('axios');
-const FormData = require('form-data');
-const fs = require('fs');
+/**
+ * Voice and OCR Service with Real Implementations
+ * 
+ * VOICE: Uses Web Speech API (handled on frontend)
+ * OCR: Uses Tesseract.js (handled on frontend) 
+ * 
+ * Backend only validates and processes the extracted data
+ */
 
 // ===============================
-// Voice-to-Text Service
+// Voice Input Processing
 // ===============================
-exports.processVoiceInput = async (audioBuffer) => {
+exports.processVoiceInput = async (transcript) => {
   try {
-    // Using Web Speech API or external service like Google Speech-to-Text
-    // For demo purposes, this is a mock implementation
-    
-    // In production, integrate with:
-    // - Google Cloud Speech-to-Text
-    // - AWS Transcribe
-    // - Azure Speech Services
-    
-    const mockTranscript = "Spent 150 rupees on lunch at cafeteria";
-    
+    if (!transcript || !transcript.trim()) {
+      throw new Error('Transcript is empty');
+    }
+
     // Parse the transcript to extract expense details
-    const expenseData = parseVoiceTranscript(mockTranscript);
+    const expenseData = parseVoiceTranscript(transcript);
     
+    if (!expenseData.amount) {
+      throw new Error('Could not extract amount from voice input');
+    }
+
     return {
       success: true,
-      transcript: mockTranscript,
+      transcript: transcript,
       expenseData,
-      confidence: 0.95
+      confidence: 0.85
     };
   } catch (error) {
     console.error('Voice processing error:', error);
-    throw new Error('Failed to process voice input');
+    throw new Error('Failed to process voice input: ' + error.message);
   }
 };
 
-// Parse voice transcript to extract expense information
+/**
+ * Parse voice transcript to extract expense information
+ * Handles various natural language patterns
+ */
 const parseVoiceTranscript = (transcript) => {
   const text = transcript.toLowerCase();
   
-  // Extract amount (looks for numbers followed by rupees/rs)
-  const amountMatch = text.match(/(\d+)\s*(rupees|rs|inr)/i);
-  const amount = amountMatch ? parseFloat(amountMatch[1]) : null;
+  // Extract amount - handles multiple formats
+  let amount = null;
   
-  // Extract description (everything after "on" or "for")
-  const descMatch = text.match(/(?:on|for)\s+(.+?)(?:\s+at|\s+in|\s*$)/i);
-  const description = descMatch ? descMatch[1].trim() : text;
+  // Pattern 1: "150 rupees", "50 rs", "100 inr"
+  const amountPattern1 = text.match(/(\d+(?:\.\d{2})?)\s*(?:rupees|rupee|rs|inr|₹)/i);
   
-  // Detect category keywords
-  let category = 'others';
-  const categoryKeywords = {
-    food: ['lunch', 'dinner', 'breakfast', 'food', 'meal', 'restaurant', 'cafe'],
-    travel: ['uber', 'ola', 'taxi', 'bus', 'metro', 'train', 'travel'],
-    education: ['book', 'course', 'tuition', 'class', 'study'],
-    entertainment: ['movie', 'game', 'concert', 'party'],
-    utilities: ['bill', 'electricity', 'water', 'internet'],
-    shopping: ['shopping', 'clothes', 'purchase'],
-    health: ['medicine', 'doctor', 'hospital', 'pharmacy']
-  };
+  // Pattern 2: "rupees 150", "rs 50"
+  const amountPattern2 = text.match(/(?:rupees|rupee|rs|inr|₹)\s*(\d+(?:\.\d{2})?)/i);
   
-  for (const [cat, keywords] of Object.entries(categoryKeywords)) {
-    if (keywords.some(keyword => text.includes(keyword))) {
-      category = cat;
-      break;
-    }
+  // Pattern 3: Just numbers if no pattern found
+  const amountPattern3 = text.match(/(\d+(?:\.\d{2})?)/);
+  
+  if (amountPattern1) {
+    amount = parseFloat(amountPattern1[1]);
+  } else if (amountPattern2) {
+    amount = parseFloat(amountPattern2[1]);
+  } else if (amountPattern3) {
+    amount = parseFloat(amountPattern3[1]);
   }
+  
+  // Extract description
+  let description = text;
+  
+  // Try to extract what comes after "on", "for", "at"
+  const descMatch = text.match(/(?:on|for|at|paid|spent|bought)\s+(.+?)(?:\s+(?:for|at|in|from|worth)\s+\d+|\s*$)/i);
+  if (descMatch) {
+    description = descMatch[1].trim();
+  } else {
+    // Remove amount and currency from description
+    description = text
+      .replace(/\d+(?:\.\d{2})?\s*(?:rupees|rupee|rs|inr|₹)/gi, '')
+      .replace(/(?:spent|paid|bought)/gi, '')
+      .trim();
+  }
+  
+  // Capitalize first letter
+  description = description.charAt(0).toUpperCase() + description.slice(1);
+  
+  // Auto-categorize based on keywords
+  const category = detectCategory(text);
+  
+  // Extract date if mentioned (e.g., "yesterday", "today", "last week")
+  const date = extractDate(text);
   
   return {
     amount,
     description,
     category,
-    date: new Date().toISOString().split('T')[0]
+    date: date.toISOString().split('T')[0]
   };
 };
 
+/**
+ * Detect category from text
+ */
+const detectCategory = (text) => {
+  const categoryKeywords = {
+    food: [
+      'lunch', 'dinner', 'breakfast', 'food', 'meal', 'restaurant', 
+      'cafe', 'coffee', 'snack', 'pizza', 'burger', 'eat', 'ate',
+      'zomato', 'swiggy', 'foodpanda', 'dominos', 'mcdonald', 'kfc'
+    ],
+    travel: [
+      'uber', 'ola', 'taxi', 'cab', 'bus', 'train', 'metro', 
+      'fuel', 'petrol', 'diesel', 'travel', 'transport', 'ride',
+      'auto', 'rickshaw', 'flight', 'ticket'
+    ],
+    education: [
+      'book', 'books', 'course', 'tuition', 'fee', 'fees', 'exam', 
+      'study', 'notebook', 'pen', 'pencil', 'stationery', 
+      'college', 'university', 'library', 'class'
+    ],
+    entertainment: [
+      'movie', 'movies', 'cinema', 'game', 'games', 'netflix', 
+      'spotify', 'prime', 'concert', 'party', 'club', 'music',
+      'theatre', 'show'
+    ],
+    utilities: [
+      'electricity', 'water', 'internet', 'wifi', 'phone', 
+      'mobile', 'recharge', 'bill', 'bills', 'rent', 'broadband'
+    ],
+    shopping: [
+      'amazon', 'flipkart', 'myntra', 'clothes', 'clothing', 
+      'shopping', 'mall', 'purchase', 'bought', 'shoes', 
+      'shirt', 'accessories', 'dress'
+    ],
+    health: [
+      'medicine', 'medicines', 'doctor', 'hospital', 'pharmacy', 
+      'medical', 'health', 'clinic', 'appointment', 'lab', 
+      'test', 'checkup', 'pills'
+    ]
+  };
+  
+  for (const [category, keywords] of Object.entries(categoryKeywords)) {
+    if (keywords.some(keyword => text.includes(keyword))) {
+      return category;
+    }
+  }
+  
+  return 'others';
+};
+
+/**
+ * Extract date from natural language
+ */
+const extractDate = (text) => {
+  const today = new Date();
+  
+  if (text.includes('yesterday')) {
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    return yesterday;
+  }
+  
+  if (text.includes('last week')) {
+    const lastWeek = new Date(today);
+    lastWeek.setDate(lastWeek.getDate() - 7);
+    return lastWeek;
+  }
+  
+  // Default to today
+  return today;
+};
+
 // ===============================
-// OCR Receipt Scanning Service
+// OCR Receipt Processing
 // ===============================
-exports.processReceiptImage = async (imageBuffer, imagePath) => {
+exports.processReceiptText = (ocrText) => {
   try {
-    // Using OCR service like:
-    // - Google Cloud Vision API
-    // - AWS Textract
-    // - Azure Computer Vision
-    // - Tesseract.js (open source)
+    if (!ocrText || !ocrText.trim()) {
+      throw new Error('OCR text is empty');
+    }
+
+    const lines = ocrText.split('\n').map(line => line.trim()).filter(Boolean);
     
-    // For demo, this is a mock implementation
-    const ocrData = await performOCR(imageBuffer);
+    // Extract data
+    const receiptData = {
+      amount: extractAmount(ocrText),
+      merchantName: extractMerchantName(lines),
+      date: extractDateFromReceipt(ocrText),
+      category: 'others',
+      description: ''
+    };
+
+    // Auto-detect category from merchant name or text
+    receiptData.category = detectCategory(ocrText.toLowerCase());
     
-    // Parse OCR text to extract receipt details
-    const receiptData = parseReceiptText(ocrData.text);
-    
+    // Generate description
+    receiptData.description = receiptData.merchantName 
+      ? `Purchase at ${receiptData.merchantName}`
+      : 'Receipt scan';
+
     return {
       success: true,
       receiptData,
-      confidence: ocrData.confidence,
-      rawText: ocrData.text
+      confidence: 0.75,
+      rawText: ocrText
     };
   } catch (error) {
     console.error('OCR processing error:', error);
-    throw new Error('Failed to process receipt image');
+    throw new Error('Failed to process receipt: ' + error.message);
   }
 };
 
-// Mock OCR function (replace with actual OCR service)
-const performOCR = async (imageBuffer) => {
-  // In production, call actual OCR API here
-  // Example with Google Cloud Vision:
-  /*
-  const vision = require('@google-cloud/vision');
-  const client = new vision.ImageAnnotatorClient();
-  const [result] = await client.textDetection(imageBuffer);
-  const text = result.textAnnotations[0]?.description || '';
-  */
-  
-  // Mock data for demonstration
-  const mockText = `
-    RESTAURANT RECEIPT
-    Date: 15/12/2024
-    Time: 14:30
-    
-    Items:
-    Pizza Margherita    250.00
-    Coca Cola           50.00
-    French Fries        80.00
-    
-    Subtotal:          380.00
-    Tax (5%):           19.00
-    Total:             399.00
-    
-    Payment: Card
-    Thank you!
-  `;
-  
-  return {
-    text: mockText,
-    confidence: 0.92
-  };
+/**
+ * Extract amount from receipt text
+ */
+const extractAmount = (text) => {
+  // Look for total amount (most common patterns)
+  const patterns = [
+    /total[:\s]*(?:rs\.?|₹)?\s*(\d+(?:\.\d{2})?)/i,
+    /grand\s*total[:\s]*(?:rs\.?|₹)?\s*(\d+(?:\.\d{2})?)/i,
+    /amount[:\s]*(?:rs\.?|₹)?\s*(\d+(?:\.\d{2})?)/i,
+    /net\s*amount[:\s]*(?:rs\.?|₹)?\s*(\d+(?:\.\d{2})?)/i,
+    /(?:rs\.?|₹)\s*(\d+(?:\.\d{2})?)\s*(?:total|grand|amount)/i
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) {
+      return parseFloat(match[1]);
+    }
+  }
+
+  // If no "total" found, look for largest number (likely the total)
+  const numbers = text.match(/\d+(?:\.\d{2})?/g);
+  if (numbers && numbers.length > 0) {
+    const amounts = numbers.map(n => parseFloat(n));
+    return Math.max(...amounts);
+  }
+
+  return null;
 };
 
-// Parse OCR text to extract receipt information
-const parseReceiptText = (text) => {
-  const lines = text.split('\n').map(line => line.trim());
+/**
+ * Extract merchant name from receipt
+ */
+const extractMerchantName = (lines) => {
+  if (lines.length === 0) return 'Unknown';
   
-  // Extract total amount (looks for "total" followed by amount)
-  let amount = null;
-  const totalMatch = text.match(/total[:\s]*(?:rs\.?|₹)?\s*(\d+(?:\.\d{2})?)/i);
-  if (totalMatch) {
-    amount = parseFloat(totalMatch[1]);
+  // Usually the merchant name is in the first few lines
+  // Skip common receipt keywords
+  const skipKeywords = ['receipt', 'invoice', 'bill', 'tax', 'gst', 'date', 'time', 'total'];
+  
+  for (let i = 0; i < Math.min(5, lines.length); i++) {
+    const line = lines[i].toLowerCase();
+    const isNotKeyword = !skipKeywords.some(keyword => line.includes(keyword));
+    const hasLetters = /[a-z]/i.test(line);
+    
+    if (isNotKeyword && hasLetters && line.length >= 3) {
+      return lines[i].substring(0, 50); // Limit to 50 chars
+    }
   }
   
-  // Extract date
-  let date = new Date();
-  const dateMatch = text.match(/date[:\s]*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/i);
-  if (dateMatch) {
-    const [, day, month, year] = dateMatch;
-    date = new Date(`${year}-${month}-${day}`);
+  return lines[0] ? lines[0].substring(0, 50) : 'Unknown Merchant';
+};
+
+/**
+ * Extract date from receipt
+ */
+const extractDateFromReceipt = (text) => {
+  // Common date patterns on receipts
+  const patterns = [
+    /date[:\s]*(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/i,
+    /(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) {
+      let [, day, month, year] = match;
+      
+      // Handle 2-digit years
+      if (year.length === 2) {
+        year = '20' + year;
+      }
+      
+      return new Date(`${year}-${month}-${day}`).toISOString().split('T')[0];
+    }
   }
-  
-  // Extract merchant name (usually first non-empty line)
-  const merchantName = lines.find(line => 
-    line.length > 0 && 
-    !line.match(/receipt|date|time|total|subtotal|tax/i)
-  ) || 'Unknown Merchant';
-  
-  // Detect category from merchant name or items
-  let category = 'others';
-  const textLower = text.toLowerCase();
-  if (textLower.match(/restaurant|cafe|food|pizza|burger/)) category = 'food';
-  else if (textLower.match(/uber|ola|taxi|transport/)) category = 'travel';
-  else if (textLower.match(/pharmacy|medicine|hospital/)) category = 'health';
-  else if (textLower.match(/mall|store|shop/)) category = 'shopping';
-  
-  return {
-    amount,
-    merchantName: merchantName.substring(0, 100),
-    date: date.toISOString().split('T')[0],
-    category,
-    description: `Purchase at ${merchantName}`
-  };
+
+  // Default to today
+  return new Date().toISOString().split('T')[0];
 };
 
 // ===============================
-// Image Upload Handler
+// File Upload Handlers
 // ===============================
+exports.handleVoiceUpload = async (file) => {
+  try {
+    // Validate file
+    const allowedTypes = ['audio/webm', 'audio/wav', 'audio/mp3', 'audio/ogg', 'audio/mpeg'];
+    if (!allowedTypes.includes(file.mimetype)) {
+      throw new Error('Invalid audio file type. Only WebM, WAV, MP3, OGG allowed.');
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      throw new Error('Audio file too large. Maximum size is 5MB.');
+    }
+
+    return {
+      success: true,
+      message: 'Voice file validated. Process on frontend with Web Speech API.'
+    };
+  } catch (error) {
+    console.error('Voice upload error:', error);
+    throw error;
+  }
+};
+
 exports.handleReceiptUpload = async (file) => {
   try {
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+    // Validate file
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
     if (!allowedTypes.includes(file.mimetype)) {
-      throw new Error('Invalid file type. Only JPEG and PNG allowed.');
+      throw new Error('Invalid file type. Only JPEG, PNG, WebP allowed.');
     }
-    
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      throw new Error('File too large. Maximum size is 5MB.');
+
+    if (file.size > 10 * 1024 * 1024) {
+      throw new Error('File too large. Maximum size is 10MB.');
     }
-    
-    // Process the image with OCR
-    const result = await exports.processReceiptImage(file.buffer, file.path);
-    
-    return result;
+
+    return {
+      success: true,
+      message: 'Image file validated. Process on frontend with Tesseract.js.'
+    };
   } catch (error) {
     console.error('Receipt upload error:', error);
     throw error;
   }
 };
 
-// ===============================
-// Voice Audio Handler
-// ===============================
-exports.handleVoiceUpload = async (file) => {
-  try {
-    // Validate file type
-    const allowedTypes = ['audio/webm', 'audio/wav', 'audio/mp3', 'audio/ogg'];
-    if (!allowedTypes.includes(file.mimetype)) {
-      throw new Error('Invalid audio file type.');
-    }
-    
-    // Validate file size (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      throw new Error('Audio file too large. Maximum size is 2MB.');
-    }
-    
-    // Process the audio with speech-to-text
-    const result = await exports.processVoiceInput(file.buffer);
-    
-    return result;
-  } catch (error) {
-    console.error('Voice upload error:', error);
-    throw error;
-  }
-};
+module.exports = exports;

@@ -8,6 +8,7 @@ import Analytics from './Analytics';
 import GroupManager from './GroupManager';
 import AddExpense from '../Expense/AddExpense';
 import ProfileSettings from '../Profile/ProfileSettings';
+import AIFinancialAssistant from '../AIFinancialAssistant';
 
 const Dashboard = () => {
     const { user, logout } = useAuth();
@@ -209,6 +210,11 @@ const Dashboard = () => {
             {showProfileSettings && (
                 <ProfileSettings onClose={() => setShowProfileSettings(false)} />
             )}
+            {/* AI Chatbot - Floating Button */}
+            <AIFinancialAssistant 
+                expenses={expenses} 
+                budget={budget} 
+            />
         </div>
     );
 };

@@ -7,69 +7,98 @@ const VoiceInput = ({ onClose, onExpenseData }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [extractedData, setExtractedData] = useState(null);
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
+  const recognitionRef = useRef(null);
 
-  const startRecording = async () => {
+  // Check browser support
+  const isSpeechSupported = () => {
+    return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+  };
+
+  const startRecording = () => {
+    if (!isSpeechSupported()) {
+      setError('Speech recognition not supported in this browser. Please use Chrome, Edge, or Safari.');
+      return;
+    }
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
+      // Create speech recognition instance
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
 
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
+      recognition.lang = 'en-IN'; // Indian English
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        setIsRecording(true);
+        setError('');
+        setTranscript('');
+      };
+
+      recognition.onresult = async (event) => {
+        const speechResult = event.results[0][0].transcript;
+        setTranscript(speechResult);
+        setIsRecording(false);
+        
+        // Process the transcript
+        await processTranscript(speechResult);
+      };
+
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setIsRecording(false);
+        
+        if (event.error === 'no-speech') {
+          setError('No speech detected. Please try again.');
+        } else if (event.error === 'not-allowed') {
+          setError('Microphone access denied. Please allow microphone access.');
+        } else {
+          setError(`Error: ${event.error}. Please try again.`);
         }
       };
 
-      mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        await processAudio(audioBlob);
-        stream.getTracks().forEach(track => track.stop());
+      recognition.onend = () => {
+        setIsRecording(false);
       };
 
-      mediaRecorder.start();
-      setIsRecording(true);
-      setError('');
+      recognition.start();
+      recognitionRef.current = recognition;
     } catch (err) {
-      setError('Microphone access denied. Please allow microphone access.');
-      console.error('Error accessing microphone:', err);
+      setError('Failed to start recording. Please try again.');
+      console.error('Recording error:', err);
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
       setIsRecording(false);
     }
   };
 
-  const processAudio = async (audioBlob) => {
+  const processTranscript = async (text) => {
     setLoading(true);
     setError('');
 
     try {
-      const formData = new FormData();
-      formData.append('audio', audioBlob, 'recording.webm');
-
-      const response = await fetch('http://localhost:5000/api/expenses/voice', {
+      const response = await fetch('http://localhost:5000/api/expenses/voice-process', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: formData
+        body: JSON.stringify({ transcript: text })
       });
 
       const data = await response.json();
 
       if (data.success) {
-        setTranscript(data.transcript || 'Audio processed successfully');
-        setExtractedData(data.data);
+        setExtractedData(data.expenseData);
       } else {
-        setError(data.error || 'Failed to process audio');
+        setError(data.error || 'Failed to process voice input');
       }
     } catch (err) {
       setError('Network error. Please try again.');
-      console.error('Error processing audio:', err);
+      console.error('Processing error:', err);
     } finally {
       setLoading(false);
     }
@@ -92,6 +121,12 @@ const VoiceInput = ({ onClose, onExpenseData }) => {
           </button>
         </div>
 
+        {!isSpeechSupported() && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+            Speech recognition is not supported in your browser. Please use Chrome, Edge, or Safari.
+          </div>
+        )}
+
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 flex items-start space-x-2">
             <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
@@ -99,13 +134,11 @@ const VoiceInput = ({ onClose, onExpenseData }) => {
           </div>
         )}
 
-        {/* Recording Interface */}
         <div className="flex flex-col items-center space-y-6">
-          {/* Microphone Button */}
           <div className="relative">
             <button
               onClick={isRecording ? stopRecording : startRecording}
-              disabled={loading}
+              disabled={loading || !isSpeechSupported()}
               className={`w-24 h-24 rounded-full flex items-center justify-center transition-all transform ${
                 isRecording
                   ? 'bg-red-500 hover:bg-red-600 animate-pulse'
@@ -123,50 +156,48 @@ const VoiceInput = ({ onClose, onExpenseData }) => {
             )}
           </div>
 
-          {/* Status Text */}
           <div className="text-center">
             {isRecording && (
               <p className="text-lg font-medium text-red-600 animate-pulse">
-                Recording... Speak now!
+                Listening... Speak now!
               </p>
             )}
             {loading && (
               <p className="text-lg font-medium text-indigo-600">
-                Processing audio...
+                Processing speech...
               </p>
             )}
             {!isRecording && !loading && !transcript && (
               <p className="text-gray-600">
-                Click the microphone to start recording
+                Click the microphone to start
               </p>
             )}
           </div>
 
-          {/* Instructions */}
           {!isRecording && !loading && !transcript && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 w-full">
-              <h4 className="font-semibold text-blue-900 mb-2">📝 How to use:</h4>
+              <h4 className="font-semibold text-blue-900 mb-2">💬 Example phrases:</h4>
               <ul className="text-sm text-blue-800 space-y-1">
-                <li>• Say: "Spent 150 rupees on lunch"</li>
-                <li>• Say: "Paid 500 for textbooks"</li>
-                <li>• Say: "50 rupees for bus ticket"</li>
+                <li>• "Spent 150 rupees on lunch"</li>
+                <li>• "Paid 500 for textbooks"</li>
+                <li>• "50 rupees bus ticket"</li>
+                <li>• "Dinner at restaurant for 300"</li>
               </ul>
             </div>
           )}
 
-          {/* Transcript Display */}
           {transcript && (
             <div className="w-full space-y-4">
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <p className="text-sm font-medium text-gray-700 mb-2">📝 Transcript:</p>
-                <p className="text-gray-900">{transcript}</p>
+                <p className="text-sm font-medium text-gray-700 mb-2">📝 You said:</p>
+                <p className="text-gray-900 italic">"{transcript}"</p>
               </div>
 
               {extractedData && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-2">
                   <div className="flex items-center space-x-2 mb-2">
                     <CheckCircle className="w-5 h-5 text-green-600" />
-                    <p className="font-semibold text-green-900">Extracted Data:</p>
+                    <p className="font-semibold text-green-900">Extracted:</p>
                   </div>
                   <div className="space-y-1 text-sm text-green-800">
                     <p><strong>Amount:</strong> ₹{extractedData.amount}</p>
@@ -199,10 +230,9 @@ const VoiceInput = ({ onClose, onExpenseData }) => {
           )}
         </div>
 
-        {/* Browser Compatibility Note */}
         <div className="mt-6 bg-amber-50 border border-amber-200 rounded-lg p-3">
           <p className="text-xs text-amber-800">
-            <strong>Note:</strong> Voice input requires microphone access. Works best in Chrome, Edge, or Firefox.
+            <strong>💡 Tip:</strong> Speak clearly and include the amount, what you bought, and optionally where you bought it.
           </p>
         </div>
       </div>

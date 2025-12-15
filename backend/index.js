@@ -9,7 +9,8 @@ const cookieParser = require('cookie-parser');
 const authRoutes = require('./routes/auth');
 const expenseRoutes = require('./routes/expenses');
 const groupRoutes = require('./routes/groups');
-
+const chatRoutes = require('./routes/chat'); // ✅ NEW
+const savingsRoutes = require('./routes/savings'); // ✅ NEW
 
 const app = express();
 
@@ -22,7 +23,6 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
-app.use('/api/groups', groupRoutes);
 
 // Rate Limiting
 const limiter = rateLimit({
@@ -42,6 +42,9 @@ mongoose.connect(process.env.MONGODB_URI, {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/expenses', expenseRoutes);
+app.use('/api/groups', groupRoutes);
+app.use('/api/chat', chatRoutes); // ✅ NEW
+app.use('/api/savings', savingsRoutes); // ✅ NEW
 
 // Health Check
 app.get('/health', (req, res) => {
@@ -56,6 +59,8 @@ app.use((err, req, res, next) => {
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
   });
 });
+
+// Cron jobs for monthly reports
 const cron = require('node-cron');
 const { resetAllMonthlyAlerts, sendMonthlyReportsToAll } = require('./utils/budgetAlertService');
 
