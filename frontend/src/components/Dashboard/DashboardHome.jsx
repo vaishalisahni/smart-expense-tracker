@@ -46,18 +46,18 @@ const Dashboard = () => {
         }
     };
 
-    const totalSpent = useMemo(() => 
-        expenses.reduce((sum, exp) => sum + exp.amount, 0), 
+    const totalSpent = useMemo(() =>
+        expenses.reduce((sum, exp) => sum + exp.amount, 0),
         [expenses]
     );
 
-    const budgetStatus = useMemo(() => 
-        predictBudgetRisk(expenses, budget), 
+    const budgetStatus = useMemo(() =>
+        predictBudgetRisk(expenses, budget),
         [expenses, budget]
     );
 
-    const aiInsights = useMemo(() => 
-        expenses.length > 0 ? generateAIInsights(expenses) : [], 
+    const aiInsights = useMemo(() =>
+        expenses.length > 0 ? generateAIInsights(expenses) : [],
         [expenses]
     );
 
@@ -74,12 +74,12 @@ const Dashboard = () => {
 
     const handleExport = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/expenses/export?format=csv', {
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/expenses/export?format=csv`, {
                 credentials: 'include'
             });
-            
+
             if (!response.ok) throw new Error('Export failed');
-            
+
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -128,7 +128,7 @@ const Dashboard = () => {
                                 <span className="sm:hidden">Expense Tracker</span>
                             </h1>
                         </div>
-                        
+
                         {/* Desktop Menu */}
                         <div className="hidden lg:flex items-center space-x-4">
                             <span className="text-gray-700 truncate max-w-[200px]">Hello, {user.name}</span>
@@ -194,26 +194,26 @@ const Dashboard = () => {
 
                 {/* Tab Navigation - Mobile Responsive */}
                 <div className="flex space-x-1 sm:space-x-2 mb-4 sm:mb-6 bg-white p-1.5 sm:p-2 rounded-lg shadow-sm overflow-x-auto scrollbar-hide">
-                    <button 
-                        onClick={() => setView('dashboard')} 
+                    <button
+                        onClick={() => setView('dashboard')}
                         className={`flex-1 min-w-[80px] sm:min-w-[100px] py-2 px-2 sm:px-4 rounded-lg font-medium transition text-xs sm:text-sm whitespace-nowrap ${view === 'dashboard' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
                     >
                         Dashboard
                     </button>
-                    <button 
-                        onClick={() => setView('expenses')} 
+                    <button
+                        onClick={() => setView('expenses')}
                         className={`flex-1 min-w-[80px] sm:min-w-[100px] py-2 px-2 sm:px-4 rounded-lg font-medium transition text-xs sm:text-sm whitespace-nowrap ${view === 'expenses' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
                     >
                         Expenses
                     </button>
-                    <button 
-                        onClick={() => setView('analytics')} 
+                    <button
+                        onClick={() => setView('analytics')}
                         className={`flex-1 min-w-[80px] sm:min-w-[100px] py-2 px-2 sm:px-4 rounded-lg font-medium transition text-xs sm:text-sm whitespace-nowrap ${view === 'analytics' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
                     >
                         Analytics
                     </button>
-                    <button 
-                        onClick={() => setView('groups')} 
+                    <button
+                        onClick={() => setView('groups')}
                         className={`flex-1 min-w-[80px] sm:min-w-[100px] py-2 px-2 sm:px-4 rounded-lg font-medium transition text-xs sm:text-sm whitespace-nowrap ${view === 'groups' ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}
                     >
                         Groups
@@ -290,15 +290,15 @@ const Dashboard = () => {
 
                                 {/* Quick Actions - Mobile Responsive */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                    <button 
-                                        onClick={() => setShowAddExpense(true)} 
+                                    <button
+                                        onClick={() => setShowAddExpense(true)}
                                         className="bg-indigo-600 text-white p-3 sm:p-4 rounded-xl shadow-sm hover:bg-indigo-700 transition flex items-center justify-center space-x-2 text-sm sm:text-base"
                                     >
                                         <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
                                         <span className="font-semibold">Add Expense</span>
                                     </button>
-                                    <button 
-                                        onClick={handleExport} 
+                                    <button
+                                        onClick={handleExport}
                                         className="bg-white border-2 border-indigo-600 text-indigo-600 p-3 sm:p-4 rounded-xl shadow-sm hover:bg-indigo-50 transition flex items-center justify-center space-x-2 text-sm sm:text-base"
                                     >
                                         <Download className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -326,9 +326,9 @@ const Dashboard = () => {
                 <ProfileSettings onClose={() => setShowProfileSettings(false)} />
             )}
 
-            <AIFinancialAssistant 
-                expenses={expenses} 
-                budget={budget} 
+            <AIFinancialAssistant
+                expenses={expenses}
+                budget={budget}
             />
 
             <style jsx>{`

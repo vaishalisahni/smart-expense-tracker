@@ -69,15 +69,18 @@ const AIFinancialAssistant = ({ expenses = [], budget = 0 }) => {
         averageDaily: expenses.length > 0 ? totalSpent / 30 : 0
       };
 
-      const response = await fetch('http://localhost:5000/api/chat/message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          message: messageText || inputMessage,
-          context: financialContext
-        })
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/chat/message`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            message: messageText || inputMessage,
+            context: financialContext,
+          }),
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -180,17 +183,15 @@ const AIFinancialAssistant = ({ expenses = [], budget = 0 }) => {
                 className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[80%] rounded-2xl p-3 ${
-                    message.role === 'user'
+                  className={`max-w-[80%] rounded-2xl p-3 ${message.role === 'user'
                       ? 'bg-indigo-600 text-white'
                       : 'bg-white text-gray-900 border border-gray-200'
-                  }`}
+                    }`}
                 >
                   <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
                   <p
-                    className={`text-xs mt-1 ${
-                      message.role === 'user' ? 'text-indigo-200' : 'text-gray-500'
-                    }`}
+                    className={`text-xs mt-1 ${message.role === 'user' ? 'text-indigo-200' : 'text-gray-500'
+                      }`}
                   >
                     {formatTime(message.timestamp)}
                   </p>

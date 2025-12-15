@@ -46,7 +46,7 @@ const InitialSetup = () => {
       const monthlyBudget = parseFloat(formData.monthlyIncome) * 0.8;
       const weeklyBudget = monthlyBudget / 4;
 
-      const response = await fetch('http://localhost:5000/api/auth/profile', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -86,7 +86,7 @@ const InitialSetup = () => {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/profile', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -176,11 +176,10 @@ const InitialSetup = () => {
                 <button
                   key={currency.code}
                   onClick={() => setFormData({ ...formData, currency: currency.code })}
-                  className={`p-4 rounded-xl border-2 transition-all ${
-                    formData.currency === currency.code
-                      ? 'border-indigo-600 bg-indigo-50'
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}
+                  className={`p-4 rounded-xl border-2 transition-all ${formData.currency === currency.code
+                    ? 'border-indigo-600 bg-indigo-50'
+                    : 'border-gray-300 hover:border-gray-400'
+                    }`}
                 >
                   <div className="text-3xl mb-2">{currency.symbol}</div>
                   <div className="font-semibold text-gray-900">{currency.code}</div>

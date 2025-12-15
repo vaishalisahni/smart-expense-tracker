@@ -40,7 +40,7 @@ const ProfileSettings = ({ onClose }) => {
     setSuccess('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/profile', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -85,7 +85,7 @@ const ProfileSettings = ({ onClose }) => {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/change-password', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/change-password`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -132,33 +132,30 @@ const ProfileSettings = ({ onClose }) => {
         <div className="flex border-b overflow-x-auto scrollbar-hide flex-shrink-0">
           <button
             onClick={() => setActiveTab('profile')}
-            className={`flex-1 min-w-[120px] py-3 px-4 font-medium transition text-xs sm:text-sm ${
-              activeTab === 'profile'
-                ? 'border-b-2 border-indigo-600 text-indigo-600'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
+            className={`flex-1 min-w-[120px] py-3 px-4 font-medium transition text-xs sm:text-sm ${activeTab === 'profile'
+              ? 'border-b-2 border-indigo-600 text-indigo-600'
+              : 'text-gray-600 hover:text-gray-900'
+              }`}
           >
             <User className="w-4 h-4 inline mr-1 sm:mr-2" />
             Profile & Budget
           </button>
           <button
             onClick={() => setActiveTab('password')}
-            className={`flex-1 min-w-[120px] py-3 px-4 font-medium transition text-xs sm:text-sm ${
-              activeTab === 'password'
-                ? 'border-b-2 border-indigo-600 text-indigo-600'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
+            className={`flex-1 min-w-[120px] py-3 px-4 font-medium transition text-xs sm:text-sm ${activeTab === 'password'
+              ? 'border-b-2 border-indigo-600 text-indigo-600'
+              : 'text-gray-600 hover:text-gray-900'
+              }`}
           >
             <Lock className="w-4 h-4 inline mr-1 sm:mr-2" />
             Password
           </button>
           <button
             onClick={() => setActiveTab('preferences')}
-            className={`flex-1 min-w-[120px] py-3 px-4 font-medium transition text-xs sm:text-sm ${
-              activeTab === 'preferences'
-                ? 'border-b-2 border-indigo-600 text-indigo-600'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
+            className={`flex-1 min-w-[120px] py-3 px-4 font-medium transition text-xs sm:text-sm ${activeTab === 'preferences'
+              ? 'border-b-2 border-indigo-600 text-indigo-600'
+              : 'text-gray-600 hover:text-gray-900'
+              }`}
           >
             <Bell className="w-4 h-4 inline mr-1 sm:mr-2" />
             Preferences
