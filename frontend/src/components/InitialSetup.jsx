@@ -42,9 +42,15 @@ const InitialSetup = () => {
     setError('');
 
     try {
-      const monthlyBudget = parseFloat(formData.monthlyIncome) * 0.8;
-      const weeklyBudget = monthlyBudget / 4;
       const monthlyIncome = parseFloat(formData.monthlyIncome);
+      const monthlySavings = parseFloat(formData.goalAmount);
+
+      if (monthlySavings > monthlyIncome) {
+        throw new Error('Savings cannot exceed income');
+      }
+
+      const monthlyBudget = monthlyIncome - monthlySavings;
+      const weeklyBudget = monthlyBudget / 4;
 
       // Save user profile with budget settings
       const profileResponse = await fetch(`${import.meta.env.VITE_API_URL}/auth/profile`, {
@@ -76,7 +82,7 @@ const InitialSetup = () => {
         body: JSON.stringify({
           name: formData.savingsGoal,
           targetAmount: parseFloat(formData.goalAmount),
-          monthlyContribution: monthlyIncome * 0.2, // 20% of income for savings
+          monthlyContribution: monthlySavings,
           deadline: null
         })
       });
@@ -169,8 +175,19 @@ const InitialSetup = () => {
             <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl p-3 sm:p-4">
               <h4 className="font-semibold text-blue-900 mb-2 text-sm sm:text-base">💡 Recommended Allocation</h4>
               <div className="text-xs sm:text-sm text-blue-800 space-y-1">
-                <p>• 80% for expenses: {formData.monthlyIncome ? `${selectedCurrency?.symbol}${(parseFloat(formData.monthlyIncome) * 0.8).toFixed(0)}` : `${selectedCurrency?.symbol}0`}</p>
-                <p>• 20% for savings: {formData.monthlyIncome ? `${selectedCurrency?.symbol}${(parseFloat(formData.monthlyIncome) * 0.2).toFixed(0)}` : `${selectedCurrency?.symbol}0`}</p>
+                <p>
+                  • Expenses: {formData.monthlyIncome
+                    ? `${selectedCurrency?.symbol}${(
+                      parseFloat(formData.monthlyIncome) -
+                      parseFloat(formData.goalAmount || 0)
+                    ).toFixed(0)}`
+                    : `${selectedCurrency?.symbol}0`}
+                </p>
+                <p>
+                  • Savings: {formData.goalAmount
+                    ? `${selectedCurrency?.symbol}${parseFloat(formData.goalAmount).toFixed(0)}`
+                    : `${selectedCurrency?.symbol}0`}
+                </p>
               </div>
             </div>
           </div>
@@ -192,11 +209,10 @@ const InitialSetup = () => {
                 <button
                   key={currency.code}
                   onClick={() => setFormData({ ...formData, currency: currency.code })}
-                  className={`p-3 sm:p-4 rounded-xl border-2 transition-all ${
-                    formData.currency === currency.code
-                      ? 'border-indigo-600 bg-gradient-to-br from-indigo-50 to-purple-50 shadow-lg scale-105'
-                      : 'border-gray-300 hover:border-gray-400 hover:shadow-md'
-                  }`}
+                  className={`p-3 sm:p-4 rounded-xl border-2 transition-all ${formData.currency === currency.code
+                    ? 'border-indigo-600 bg-gradient-to-br from-indigo-50 to-purple-50 shadow-lg scale-105'
+                    : 'border-gray-300 hover:border-gray-400 hover:shadow-md'
+                    }`}
                 >
                   <div className="text-2xl sm:text-3xl mb-2">{currency.symbol}</div>
                   <div className="font-semibold text-gray-900 text-sm sm:text-base">{currency.code}</div>
@@ -258,12 +274,14 @@ const InitialSetup = () => {
               <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-3 sm:p-4">
                 <h4 className="font-semibold text-green-900 mb-2 text-sm sm:text-base">📊 Goal Timeline</h4>
                 <div className="text-xs sm:text-sm text-green-800 space-y-1">
-                  <p>• Monthly savings (20%): {selectedCurrency?.symbol}{(parseFloat(formData.monthlyIncome) * 0.2).toFixed(0)}</p>
-                  <p>• Time to reach goal: {(() => {
-                    const monthlySavings = parseFloat(formData.monthlyIncome) * 0.2;
-                    const months = Math.ceil(parseFloat(formData.goalAmount) / monthlySavings);
-                    return months > 0 && isFinite(months) ? `${months} months` : 'Invalid calculation';
-                  })()}</p>
+                  <p>
+                    • Monthly savings: {selectedCurrency?.symbol}
+                    {parseFloat(formData.goalAmount).toFixed(0)}
+                  </p>
+                  <p>
+                    • Time to reach goal: 1 month
+                  </p>
+
                 </div>
               </div>
             )}
@@ -310,14 +328,23 @@ const InitialSetup = () => {
                 <h4 className="font-semibold text-indigo-900 mb-2 text-sm sm:text-base">Your Budget Plan</h4>
                 <div className="text-xs sm:text-sm text-indigo-800 space-y-1">
                   <p>• Monthly Income: {selectedCurrency?.symbol}{parseFloat(formData.monthlyIncome).toFixed(0)}</p>
-                  <p>• Monthly Budget (80%): {selectedCurrency?.symbol}{(parseFloat(formData.monthlyIncome) * 0.8).toFixed(0)}</p>
-                  <p>• Weekly Budget: {selectedCurrency?.symbol}{((parseFloat(formData.monthlyIncome) * 0.8) / 4).toFixed(0)}</p>
-                  <p>• Monthly Savings (20%): {selectedCurrency?.symbol}{(parseFloat(formData.monthlyIncome) * 0.2).toFixed(0)}</p>
-                  <p>• Time to Goal: {(() => {
-                    const monthlySavings = parseFloat(formData.monthlyIncome) * 0.2;
-                    const months = Math.ceil(parseFloat(formData.goalAmount) / monthlySavings);
-                    return months > 0 && isFinite(months) ? `${months} months` : 'N/A';
-                  })()}</p>
+                  <p>
+                    • Monthly Budget: {selectedCurrency?.symbol}
+                    {(parseFloat(formData.monthlyIncome) - parseFloat(formData.goalAmount)).toFixed(0)}
+                  </p>
+                  <p>
+                    • Weekly Budget: {selectedCurrency?.symbol}
+                    {(
+                      (parseFloat(formData.monthlyIncome) - parseFloat(formData.goalAmount)) / 4
+                    ).toFixed(0)}
+                  </p>
+                  <p>
+                    • Monthly Savings: {selectedCurrency?.symbol}
+                    {parseFloat(formData.goalAmount).toFixed(0)}
+                  </p>
+                  <p>
+                    • Time to Goal: 1 month
+                  </p>
                 </div>
               </div>
             </div>

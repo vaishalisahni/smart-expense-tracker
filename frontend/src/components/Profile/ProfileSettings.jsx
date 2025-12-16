@@ -12,11 +12,15 @@ const ProfileSettings = ({ onClose }) => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  const primaryGoal = user?.savingsGoals?.[0];
+
   const [profileData, setProfileData] = useState({
     name: user?.name || '',
     email: user?.email || '',
-    monthlyBudget: user?.monthlyBudget || 5000,
-    weeklyBudget: user?.weeklyBudget || 1250
+    monthlyIncome: user?.monthlyIncome || 0,
+    monthlyBudget: user?.monthlyBudget || 0,
+    weeklyBudget: user?.weeklyBudget || 0,
+    monthlySavings: primaryGoal?.monthlyContribution || 0
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -49,6 +53,7 @@ const ProfileSettings = ({ onClose }) => {
         credentials: 'include',
         body: JSON.stringify({
           name: profileData.name,
+          monthlyIncome: parseFloat(profileData.monthlyIncome),
           monthlyBudget: parseFloat(profileData.monthlyBudget),
           weeklyBudget: parseFloat(profileData.weeklyBudget),
           preferences
@@ -164,8 +169,8 @@ const ProfileSettings = ({ onClose }) => {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex-1 min-w-[100px] sm:min-w-[120px] py-3 px-3 sm:px-4 font-semibold transition-all text-xs sm:text-sm ${activeTab === tab.id
-                    ? 'border-b-2 border-indigo-600 text-indigo-600 bg-indigo-50'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  ? 'border-b-2 border-indigo-600 text-indigo-600 bg-indigo-50'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                   }`}
               >
                 <div className="flex items-center justify-center space-x-1 sm:space-x-2">
@@ -240,6 +245,32 @@ const ProfileSettings = ({ onClose }) => {
                 </h3>
 
                 <div className="space-y-4">
+                  {/* Monthly Income */}
+                  <div>
+                    <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                      Monthly Income (₹)
+                    </label>
+                    <input
+                      type="number"
+                      value={profileData.monthlyIncome}
+                      onChange={(e) => {
+                        const income = parseFloat(e.target.value) || 0;
+                        const savings = profileData.monthlySavings;
+                        const budget = Math.max(income - savings, 0);
+                        setProfileData({
+                          ...profileData,
+                          monthlyIncome: income,
+                          monthlyBudget: budget,
+                          weeklyBudget: calculateWeeklyBudget(budget)
+                        });
+                      }}
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base transition-all"
+                      min="0"
+                      step="100"
+                    />
+                  </div>
+
+                  {/* Monthly Budget */}
                   <div>
                     <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
                       Monthly Budget (₹)
@@ -259,11 +290,9 @@ const ProfileSettings = ({ onClose }) => {
                       min="0"
                       step="100"
                     />
-                    <p className="mt-1 text-xs text-gray-500">
-                      Set your total monthly spending limit
-                    </p>
                   </div>
 
+                  {/* Weekly Budget */}
                   <div>
                     <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
                       Weekly Budget (₹)
@@ -281,6 +310,7 @@ const ProfileSettings = ({ onClose }) => {
                     </p>
                   </div>
 
+                  {/* Budget Breakdown Box */}
                   <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-3 sm:p-4">
                     <h4 className="font-semibold text-indigo-900 mb-2 text-xs sm:text-sm flex items-center gap-2">
                       <Sparkles className="w-4 h-4" />
@@ -603,4 +633,5 @@ scrollbar-width: none;
     </div>
   );
 };
+
 export default ProfileSettings;
