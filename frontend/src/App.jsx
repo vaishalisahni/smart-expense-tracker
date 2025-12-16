@@ -33,7 +33,7 @@ const App = () => {
           }
         />
 
-        {/* Initial Setup */}
+        {/* Initial Setup - FIXED: Only shows if NOT completed */}
         <Route
           path="/setup"
           element={
@@ -76,11 +76,11 @@ const PublicRoute = ({ children }) => {
   if (loading) return <LoadingScreen />;
 
   if (user) {
-    // User logged in but setup not done
-    if (!user.setupCompleted) {
+    // FIXED: Check if setup is completed
+    if (user.setupCompleted === false) {
       return <Navigate to="/setup" replace />;
     }
-    // Fully authenticated
+    // Fully authenticated with setup done
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -97,13 +97,14 @@ const ProtectedRoute = ({ children, requireSetup = true }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // Require setup but not completed
-  if (requireSetup && !user.setupCompleted) {
+  // FIXED: Proper setup completion check
+  // If setup is required but not completed → redirect to setup
+  if (requireSetup && user.setupCompleted === false) {
     return <Navigate to="/setup" replace />;
   }
 
-  // Setup page but already completed
-  if (!requireSetup && user.setupCompleted) {
+  // FIXED: If on setup page but setup already completed → redirect to dashboard
+  if (!requireSetup && user.setupCompleted === true) {
     return <Navigate to="/dashboard" replace />;
   }
 

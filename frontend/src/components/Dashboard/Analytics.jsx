@@ -132,7 +132,7 @@ const Analytics = ({ expenses }) => {
         
         <div className="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl shadow-xl p-4 sm:p-6 text-white">
           <p className="text-xs sm:text-sm text-white/80 mb-2">Avg Transaction</p>
-          <p className="text-2xl sm:text-3xl font-bold">₹{Math.round(totalSpent / expenses.length).toLocaleString()}</p>
+          <p className="text-2xl sm:text-3xl font-bold">₹{expenses.length > 0 ? Math.round(totalSpent / expenses.length).toLocaleString() : '0'}</p>
         </div>
       </div>
 

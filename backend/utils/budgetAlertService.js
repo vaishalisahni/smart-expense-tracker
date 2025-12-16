@@ -31,7 +31,10 @@ exports.checkBudgetAndAlert = async (userId) => {
       });
 
       const totalSpent = expenses.reduce((sum, exp) => sum + exp.amount, 0);
-      const percentage = (totalSpent / user.monthlyBudget) * 100;
+      
+      // FIXED: Default budget if not set, prevent division by zero
+      const budget = user.monthlyBudget || 5000;
+      const percentage = (totalSpent / budget) * 100;
 
       // Determine alert level
       let alertLevel = null;
@@ -53,7 +56,7 @@ exports.checkBudgetAndAlert = async (userId) => {
         await sendBudgetAlert(user.email, user.name, {
           percentage: Math.round(percentage),
           budgetUsed: totalSpent,
-          totalBudget: user.monthlyBudget,
+          totalBudget: budget, // FIXED: Use local budget variable
           level: alertLevel
         });
 
@@ -67,7 +70,7 @@ exports.checkBudgetAndAlert = async (userId) => {
       return {
         percentage,
         totalSpent,
-        budget: user.monthlyBudget,
+        budget,
         alertSent: !!alertLevel
       };
     } catch (error) {
@@ -136,7 +139,9 @@ exports.predictBudgetOverspend = async (userId) => {
     });
 
     const totalSpent = expenses.reduce((sum, exp) => sum + exp.amount, 0);
-    const dailyAverage = totalSpent / daysElapsed;
+    
+    // FIXED: Prevent division by zero on day 1
+    const dailyAverage = daysElapsed > 0 ? totalSpent / daysElapsed : totalSpent;
     const projectedSpending = dailyAverage * daysInMonth;
     const projectedOverspend = projectedSpending - user.monthlyBudget;
 
@@ -177,7 +182,8 @@ exports.predictBudgetOverspend = async (userId) => {
       projectedSpending: Math.round(projectedSpending),
       projectedOverspend: Math.round(projectedOverspend),
       daysRemaining,
-      recommendedDailyLimit: Math.round((user.monthlyBudget - totalSpent) / daysRemaining),
+      // FIXED: Prevent division by zero on last day of month
+      recommendedDailyLimit: daysRemaining > 0 ? Math.round((user.monthlyBudget - totalSpent) / daysRemaining) : 0,
       recommendations
     };
   } catch (error) {

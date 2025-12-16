@@ -44,12 +44,15 @@ const InitialSetup = () => {
     try {
       const monthlyBudget = parseFloat(formData.monthlyIncome) * 0.8;
       const weeklyBudget = monthlyBudget / 4;
+      const monthlyIncome = parseFloat(formData.monthlyIncome);
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/profile`, {
+      // Save user profile with budget settings
+      const profileResponse = await fetch(`${import.meta.env.VITE_API_URL}/auth/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
+          monthlyIncome,
           monthlyBudget,
           weeklyBudget,
           preferences: {
@@ -59,10 +62,30 @@ const InitialSetup = () => {
         })
       });
 
-      const data = await response.json();
+      const profileData = await profileResponse.json();
 
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Failed to save setup');
+      if (!profileResponse.ok || !profileData.success) {
+        throw new Error(profileData.error || 'Failed to save profile settings');
+      }
+
+      // Create initial savings goal
+      const savingsResponse = await fetch(`${import.meta.env.VITE_API_URL}/savings/goals`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: formData.savingsGoal,
+          targetAmount: parseFloat(formData.goalAmount),
+          monthlyContribution: monthlyIncome * 0.2, // 20% of income for savings
+          deadline: null
+        })
+      });
+
+      const savingsData = await savingsResponse.json();
+
+      if (!savingsResponse.ok || !savingsData.success) {
+        console.warn('Savings goal creation failed:', savingsData.error);
+        // Don't block completion if savings goal fails
       }
 
       updateUser({ setupCompleted: true });
@@ -103,14 +126,6 @@ const InitialSetup = () => {
       setError(err.message || 'Unable to skip setup. Try again.');
       setLoading(false);
     }
-  };
-
-  const passwordStrength = (password) => {
-    if (password.length < 6) return { level: 0, text: 'Too short', color: 'red' };
-    if (password.length < 8) return { level: 1, text: 'Weak', color: 'orange' };
-    if (password.length < 10 && /[A-Z]/.test(password)) return { level: 2, text: 'Good', color: 'yellow' };
-    if (password.length >= 10 && /[A-Z]/.test(password) && /[0-9]/.test(password)) return { level: 3, text: 'Strong', color: 'green' };
-    return { level: 1, text: 'Weak', color: 'orange' };
   };
 
   const renderStep = () => {
@@ -239,12 +254,16 @@ const InitialSetup = () => {
               </div>
             </div>
 
-            {formData.monthlyIncome && formData.goalAmount && (
+            {formData.monthlyIncome && formData.goalAmount && parseFloat(formData.monthlyIncome) > 0 && parseFloat(formData.goalAmount) > 0 && (
               <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-3 sm:p-4">
                 <h4 className="font-semibold text-green-900 mb-2 text-sm sm:text-base">📊 Goal Timeline</h4>
                 <div className="text-xs sm:text-sm text-green-800 space-y-1">
-                  <p>• Monthly savings: {selectedCurrency?.symbol}{(parseFloat(formData.monthlyIncome) * 0.2).toFixed(0)}</p>
-                  <p>• Time to reach goal: {Math.ceil(parseFloat(formData.goalAmount) / (parseFloat(formData.monthlyIncome) * 0.2))} months</p>
+                  <p>• Monthly savings (20%): {selectedCurrency?.symbol}{(parseFloat(formData.monthlyIncome) * 0.2).toFixed(0)}</p>
+                  <p>• Time to reach goal: {(() => {
+                    const monthlySavings = parseFloat(formData.monthlyIncome) * 0.2;
+                    const months = Math.ceil(parseFloat(formData.goalAmount) / monthlySavings);
+                    return months > 0 && isFinite(months) ? `${months} months` : 'Invalid calculation';
+                  })()}</p>
                 </div>
               </div>
             )}
@@ -290,9 +309,15 @@ const InitialSetup = () => {
               <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-3 sm:p-4">
                 <h4 className="font-semibold text-indigo-900 mb-2 text-sm sm:text-base">Your Budget Plan</h4>
                 <div className="text-xs sm:text-sm text-indigo-800 space-y-1">
-                  <p>• Monthly Budget: {selectedCurrency?.symbol}{(parseFloat(formData.monthlyIncome) * 0.8).toFixed(0)}</p>
-                  <p>• Weekly Budget: {selectedCurrency?.symbol}{(parseFloat(formData.monthlyIncome) * 0.2).toFixed(0)}</p>
-                  <p>• Monthly Savings: {selectedCurrency?.symbol}{(parseFloat(formData.monthlyIncome) * 0.2).toFixed(0)}</p>
+                  <p>• Monthly Income: {selectedCurrency?.symbol}{parseFloat(formData.monthlyIncome).toFixed(0)}</p>
+                  <p>• Monthly Budget (80%): {selectedCurrency?.symbol}{(parseFloat(formData.monthlyIncome) * 0.8).toFixed(0)}</p>
+                  <p>• Weekly Budget: {selectedCurrency?.symbol}{((parseFloat(formData.monthlyIncome) * 0.8) / 4).toFixed(0)}</p>
+                  <p>• Monthly Savings (20%): {selectedCurrency?.symbol}{(parseFloat(formData.monthlyIncome) * 0.2).toFixed(0)}</p>
+                  <p>• Time to Goal: {(() => {
+                    const monthlySavings = parseFloat(formData.monthlyIncome) * 0.2;
+                    const months = Math.ceil(parseFloat(formData.goalAmount) / monthlySavings);
+                    return months > 0 && isFinite(months) ? `${months} months` : 'N/A';
+                  })()}</p>
                 </div>
               </div>
             </div>

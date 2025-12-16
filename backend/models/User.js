@@ -13,6 +13,7 @@ const userSchema = new mongoose.Schema({
     unique: true,
     lowercase: true,
     trim: true
+    // REMOVED: index: true - causing duplicate index warning
   },
   password: {
     type: String,
@@ -128,30 +129,27 @@ const userSchema = new mongoose.Schema({
   }
 }, { 
   timestamps: true,
-  // Ensure virtual fields are included when converting to JSON
   toJSON: { virtuals: true },
   toObject: { virtuals: true }
 });
 
 // ============ INDEXES ============
+// FIXED: Only define index once using schema.index()
 userSchema.index({ email: 1 });
 userSchema.index({ createdAt: -1 });
 
 // ============ VIRTUAL FIELDS ============
 
-// Calculate total savings across all goals
 userSchema.virtual('totalSavings').get(function() {
   if (!this.savingsGoals || this.savingsGoals.length === 0) return 0;
   return this.savingsGoals.reduce((sum, goal) => sum + goal.currentAmount, 0);
 });
 
-// Calculate total target across all goals
 userSchema.virtual('totalSavingsTarget').get(function() {
   if (!this.savingsGoals || this.savingsGoals.length === 0) return 0;
   return this.savingsGoals.reduce((sum, goal) => sum + goal.targetAmount, 0);
 });
 
-// Calculate savings progress percentage
 userSchema.virtual('savingsProgress').get(function() {
   const total = this.totalSavings;
   const target = this.totalSavingsTarget;
@@ -160,32 +158,27 @@ userSchema.virtual('savingsProgress').get(function() {
 
 // ============ METHODS ============
 
-// Hash password before saving
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
   this.password = await bcrypt.hash(this.password, 12);
   next();
 });
 
-// Compare password method
 userSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-// Reset alert flags at the start of each month
 userSchema.methods.resetMonthlyAlerts = function() {
   this.alertsSent = new Map();
   return this.save();
 };
 
-// Add savings to a goal
 userSchema.methods.addSavings = function(goalId, amount) {
   const goal = this.savingsGoals.id(goalId);
   if (!goal) throw new Error('Goal not found');
   
   goal.currentAmount += amount;
   
-  // Check if goal is completed
   if (goal.currentAmount >= goal.targetAmount) {
     goal.isCompleted = true;
   }
@@ -193,7 +186,6 @@ userSchema.methods.addSavings = function(goalId, amount) {
   return this.save();
 };
 
-// Withdraw from savings goal
 userSchema.methods.withdrawSavings = function(goalId, amount) {
   const goal = this.savingsGoals.id(goalId);
   if (!goal) throw new Error('Goal not found');

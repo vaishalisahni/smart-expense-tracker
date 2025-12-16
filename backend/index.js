@@ -9,8 +9,8 @@ const cookieParser = require('cookie-parser');
 const authRoutes = require('./routes/auth');
 const expenseRoutes = require('./routes/expenses');
 const groupRoutes = require('./routes/groups');
-const chatRoutes = require('./routes/chat'); // ✅ NEW
-const savingsRoutes = require('./routes/savings'); // ✅ NEW
+const chatRoutes = require('./routes/chat');
+const savingsRoutes = require('./routes/savings');
 
 const app = express();
 
@@ -31,11 +31,8 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
+// MongoDB Connection - FIXED: Removed deprecated options
+mongoose.connect(process.env.MONGODB_URI)
 .then(() => console.log('✅ MongoDB Connected'))
 .catch(err => console.error('❌ MongoDB Connection Error:', err));
 
@@ -43,8 +40,8 @@ mongoose.connect(process.env.MONGODB_URI, {
 app.use('/api/auth', authRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/groups', groupRoutes);
-app.use('/api/chat', chatRoutes); // ✅ NEW
-app.use('/api/savings', savingsRoutes); // ✅ NEW
+app.use('/api/chat', chatRoutes);
+app.use('/api/savings', savingsRoutes);
 
 // Health Check
 app.get('/health', (req, res) => {

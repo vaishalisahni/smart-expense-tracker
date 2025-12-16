@@ -62,8 +62,8 @@ const Dashboard = () => {
     );
 
     // Calculate percentage for progress
-    const budgetPercentage = useMemo(() => 
-        Math.min((totalSpent / budget) * 100, 100),
+    const budgetPercentage = useMemo(() =>
+        budget > 0 ? Math.min((totalSpent / budget) * 100, 100) : 0,
         [totalSpent, budget]
     );
 
@@ -226,11 +226,10 @@ const Dashboard = () => {
                             <button
                                 key={item.id}
                                 onClick={() => setView(item.id)}
-                                className={`flex-1 min-w-[70px] sm:min-w-[90px] lg:min-w-[110px] py-2 sm:py-2.5 lg:py-3 px-2 sm:px-3 lg:px-4 rounded-xl font-semibold transition-all duration-200 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm ${
-                                    view === item.id
+                                className={`flex-1 min-w-[70px] sm:min-w-[90px] lg:min-w-[110px] py-2 sm:py-2.5 lg:py-3 px-2 sm:px-3 lg:px-4 rounded-xl font-semibold transition-all duration-200 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-xs sm:text-sm ${view === item.id
                                         ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white shadow-lg transform scale-105'
                                         : 'text-gray-600 hover:bg-gray-50'
-                                }`}
+                                    }`}
                             >
                                 <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                 <span className="text-[10px] sm:text-sm">{item.label}</span>
@@ -260,15 +259,14 @@ const Dashboard = () => {
                         ) : (
                             <>
                                 {/* Enhanced Budget Status Card - Responsive */}
-                                <div className={`rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 lg:p-8 text-white relative overflow-hidden ${
-                                    budgetStatus.color === 'green' ? 'bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600' :
-                                    budgetStatus.color === 'yellow' ? 'bg-gradient-to-br from-yellow-500 via-amber-500 to-orange-500' :
-                                    budgetStatus.color === 'orange' ? 'bg-gradient-to-br from-orange-500 via-red-500 to-pink-500' :
-                                    'bg-gradient-to-br from-red-500 via-rose-500 to-pink-600'
-                                }`}>
+                                <div className={`rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 lg:p-8 text-white relative overflow-hidden ${budgetStatus.color === 'green' ? 'bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600' :
+                                        budgetStatus.color === 'yellow' ? 'bg-gradient-to-br from-yellow-500 via-amber-500 to-orange-500' :
+                                            budgetStatus.color === 'orange' ? 'bg-gradient-to-br from-orange-500 via-red-500 to-pink-500' :
+                                                'bg-gradient-to-br from-red-500 via-rose-500 to-pink-600'
+                                    }`}>
                                     <div className="absolute top-0 right-0 w-40 h-40 sm:w-64 sm:h-64 bg-white opacity-5 rounded-full -mr-20 sm:-mr-32 -mt-20 sm:-mt-32"></div>
                                     <div className="absolute bottom-0 left-0 w-32 h-32 sm:w-48 sm:h-48 bg-white opacity-5 rounded-full -ml-16 sm:-ml-24 -mb-16 sm:-mb-24"></div>
-                                    
+
                                     <div className="relative z-10">
                                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
                                             <div className="flex-1">
@@ -287,14 +285,14 @@ const Dashboard = () => {
                                                 )}
                                             </div>
                                         </div>
-                                        
+
                                         <div className="bg-white/20 rounded-full h-2.5 sm:h-3 mb-3 sm:mb-4 overflow-hidden backdrop-blur-sm">
-                                            <div 
-                                                className="bg-white rounded-full h-2.5 sm:h-3 transition-all duration-500 shadow-lg" 
+                                            <div
+                                                className="bg-white rounded-full h-2.5 sm:h-3 transition-all duration-500 shadow-lg"
                                                 style={{ width: `${budgetPercentage}%` }}
                                             ></div>
                                         </div>
-                                        
+
                                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                                             <p className="text-xs sm:text-sm font-semibold">{budgetStatus.message}</p>
                                             <p className="text-xs sm:text-sm font-bold bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm">
@@ -319,7 +317,7 @@ const Dashboard = () => {
                                             This month
                                         </p>
                                     </div>
-                                    
+
                                     <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 border border-gray-100 hover:shadow-xl transition-shadow duration-300 group">
                                         <div className="flex items-center justify-between mb-3">
                                             <p className="text-gray-600 text-xs sm:text-sm font-medium">Transactions</p>
@@ -330,7 +328,7 @@ const Dashboard = () => {
                                         <p className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">{expenses.length}</p>
                                         <p className="text-[10px] sm:text-xs text-gray-500">Total count</p>
                                     </div>
-                                    
+
                                     <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 border border-gray-100 hover:shadow-xl transition-shadow duration-300 group sm:col-span-2 lg:col-span-1">
                                         <div className="flex items-center justify-between mb-3">
                                             <p className="text-gray-600 text-xs sm:text-sm font-medium">Daily Average</p>
