@@ -20,7 +20,7 @@ const { protect } = require('../middleware/auth');
 // ✅ Rate limiter for authentication routes (5 attempts per 15 min)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 15,
   message: 'Too many authentication attempts, please try again in 15 minutes.',
   standardHeaders: true,
   legacyHeaders: false,
@@ -35,7 +35,7 @@ const authLimiter = rateLimit({
 // ✅ Stricter rate limiter for OTP requests (3 per hour)
 const otpLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 3,
+  max: 15,
   message: 'Too many OTP requests, please try again later.',
   skipSuccessfulRequests: false,
   handler: (req, res) => {
@@ -49,7 +49,7 @@ const otpLimiter = rateLimit({
 // 🆕 Rate limiter for OTP verification (10 attempts per 15 min)
 const otpVerifyLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 15,
   message: 'Too many OTP verification attempts',
   handler: (req, res) => {
     res.status(429).json({
