@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DollarSign, Mail, Lock, User, ArrowRight, Shield, Sparkles, Check } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -19,6 +20,7 @@ const Register = () => {
   const [success, setSuccess] = useState('');
   const [timer, setTimer] = useState(600);
   const [timerActive, setTimerActive] = useState(false);
+  const { refreshUser } = useAuth();
 
   React.useEffect(() => {
     let interval;
@@ -69,6 +71,7 @@ const Register = () => {
       const response = await fetch(`${API_URL}/auth/request-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // ✅ FIX
         body: JSON.stringify({
           email: formData.email,
           name: formData.name
@@ -85,7 +88,7 @@ const Register = () => {
       } else {
         setError(data.error || 'Failed to send OTP');
       }
-    } catch (err) {
+    } catch {
       setError('Network error. Please try again.');
     } finally {
       setLoading(false);
@@ -131,14 +134,16 @@ const Register = () => {
       const data = await response.json();
 
       if (data.success) {
+        setTimerActive(false); // ✅ FIX
         setSuccess('Registration successful! Redirecting...');
+        await refreshUser();
         setTimeout(() => {
           navigate('/setup');
         }, 1500);
       } else {
         setError(data.error || 'Invalid OTP');
       }
-    } catch (err) {
+    } catch {
       setError('Failed to verify OTP');
     } finally {
       setLoading(false);
@@ -153,6 +158,7 @@ const Register = () => {
       const response = await fetch(`${API_URL}/auth/resend-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // ✅ FIX
         body: JSON.stringify({ email: formData.email })
       });
 
@@ -166,7 +172,7 @@ const Register = () => {
       } else {
         setError(data.error);
       }
-    } catch (err) {
+    } catch {
       setError('Failed to resend OTP');
     } finally {
       setLoading(false);
@@ -296,6 +302,7 @@ const Register = () => {
                       name="password"
                       value={formData.password}
                       onChange={handleInputChange}
+                      disabled={step === 2}
                       className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-200"
                       placeholder="••••••••"
                     />
@@ -304,22 +311,20 @@ const Register = () => {
                     <div className="mt-2">
                       <div className="flex items-center gap-2 mb-1">
                         <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full rounded-full transition-all duration-300 ${
-                              strength.color === 'red' ? 'bg-red-500' :
-                              strength.color === 'orange' ? 'bg-orange-500' :
-                              strength.color === 'yellow' ? 'bg-yellow-500' :
-                              'bg-green-500'
-                            }`}
+                          <div
+                            className={`h-full rounded-full transition-all duration-300 ${strength.color === 'red' ? 'bg-red-500' :
+                                strength.color === 'orange' ? 'bg-orange-500' :
+                                  strength.color === 'yellow' ? 'bg-yellow-500' :
+                                    'bg-green-500'
+                              }`}
                             style={{ width: `${(strength.level + 1) * 25}%` }}
                           ></div>
                         </div>
-                        <span className={`text-xs font-semibold ${
-                          strength.color === 'red' ? 'text-red-600' :
-                          strength.color === 'orange' ? 'text-orange-600' :
-                          strength.color === 'yellow' ? 'text-yellow-600' :
-                          'text-green-600'
-                        }`}>
+                        <span className={`text-xs font-semibold ${strength.color === 'red' ? 'text-red-600' :
+                            strength.color === 'orange' ? 'text-orange-600' :
+                              strength.color === 'yellow' ? 'text-yellow-600' :
+                                'text-green-600'
+                          }`}>
                           {strength.text}
                         </span>
                       </div>
@@ -339,6 +344,7 @@ const Register = () => {
                       type="password"
                       name="confirmPassword"
                       value={formData.confirmPassword}
+                      disabled={step === 2}
                       onChange={handleInputChange}
                       className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-2 border-gray-200 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-200"
                       placeholder="••••••••"
@@ -380,6 +386,11 @@ const Register = () => {
                       maxLength="1"
                       value={digit}
                       onChange={(e) => handleOtpChange(index, e.target.value)}
+                      onKeyDown={(e) => { // ✅ FIX
+                        if (e.key === 'Backspace' && !otp[index] && index > 0) {
+                          document.getElementById(`otp-${index - 1}`)?.focus();
+                        }
+                      }}
                       className="w-12 h-14 text-center text-2xl font-bold border-2 border-gray-300 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all bg-gray-50 focus:bg-white"
                     />
                   ))}
@@ -414,6 +425,7 @@ const Register = () => {
                     onClick={() => {
                       setStep(1);
                       setTimerActive(false);
+                      setTimer(600)
                       setOtp(['', '', '', '', '', '']);
                     }}
                     className="py-3 text-sm font-semibold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition"

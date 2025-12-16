@@ -13,7 +13,7 @@ const userSchema = new mongoose.Schema({
     unique: true,
     lowercase: true,
     trim: true
-    // REMOVED: index: true - causing duplicate index warning
+    // ✅ REMOVED: index: true - to prevent duplicate index warning
   },
   password: {
     type: String,
@@ -134,8 +134,8 @@ const userSchema = new mongoose.Schema({
 });
 
 // ============ INDEXES ============
-// FIXED: Only define index once using schema.index()
-userSchema.index({ email: 1 });
+// ✅ FIXED: Only define index once using schema.index()
+userSchema.index({ email: 1 }); // Single definition - no duplicates
 userSchema.index({ createdAt: -1 });
 
 // ============ VIRTUAL FIELDS ============

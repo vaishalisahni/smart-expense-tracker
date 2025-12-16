@@ -2,7 +2,7 @@ const User = require('../models/User');
 const OTP = require('../models/OTP');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const { sendOTPEmail } = require('../utils/emailService');
+const { sendOTPEmail, sendLoginOTPEmail } = require('../utils/emailService');
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -22,8 +22,8 @@ const generateRefreshToken = (id) => {
 // ===============================
 const cookieOptions = {
   httpOnly: true,
-  secure: isProduction, // true in prod
-  sameSite: isProduction ? 'none' : 'lax', 
+  secure: isProduction,
+  sameSite: isProduction ? 'none' : 'lax',
   maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
 };
 
@@ -46,18 +46,29 @@ const generateOTP = () => crypto.randomInt(100000, 999999).toString();
 // ===============================
 exports.requestOTP = async (req, res) => {
   try {
-    const { email, name } = req.body;
+    const email = req.body.email.toLowerCase();
+    const { name } = req.body;
+
     if (!email || !name) return res.status(400).json({ error: 'Email and name are required' });
 
     const userExists = await User.findOne({ email });
     if (userExists) return res.status(400).json({ error: 'User already exists with this email' });
 
-    await OTP.deleteMany({ email });
+    // ✅ Delete any existing registration OTPs for this email
+    await OTP.deleteMany({ email, type: 'registration' });
 
     const otpCode = generateOTP();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min
 
-    await OTP.create({ email, otp: otpCode, expiresAt, attempts: 0 });
+    // ✅ FIXED: Explicitly set type to 'registration'
+    await OTP.create({
+      email,
+      otp: otpCode,
+      expiresAt,
+      attempts: 0,
+      type: 'registration'
+    });
+
     await sendOTPEmail(email, name, otpCode);
 
     res.json({ success: true, message: 'OTP sent to your email', expiresIn: 600 });
@@ -78,33 +89,41 @@ exports.verifyOTP = async (req, res) => {
     if (!email || !otp || !password || !name)
       return res.status(400).json({ error: 'All fields are required' });
 
-    const otpRecord = await OTP.findOne({ email });
-    if (!otpRecord) return res.status(400).json({ error: 'No OTP found. Please request a new one.' });
+    // ✅ FIXED: Look for registration type OTP
+    const otpRecord = await OTP.findOne({ email, type: 'registration' });
+    if (!otpRecord) {
+      console.log('❌ No OTP found for:', email, 'type: registration');
+      return res.status(400).json({ error: 'No OTP found. Please request a new one.' });
+    }
 
     if (otpRecord.expiresAt < new Date()) {
-      await OTP.deleteOne({ email });
+      await OTP.deleteOne({ email, type: 'registration' });
       return res.status(400).json({ error: 'OTP expired. Please request a new one.' });
     }
 
     if (otpRecord.attempts >= 3) {
-      await OTP.deleteOne({ email });
+      await OTP.deleteOne({ email, type: 'registration' });
       return res.status(400).json({ error: 'Too many failed attempts. Please request a new OTP.' });
     }
 
     if (otpRecord.otp !== otp) {
       otpRecord.attempts += 1;
       await otpRecord.save();
+      console.log(`❌ Invalid OTP. Expected: ${otpRecord.otp}, Got: ${otp}`);
       return res.status(400).json({ error: 'Invalid OTP', attemptsLeft: 3 - otpRecord.attempts });
     }
 
+    // ✅ OTP is valid - create user
     const user = await User.create({ name, email, password, isVerified: true });
-    await OTP.deleteOne({ email });
+    await OTP.deleteOne({ email, type: 'registration' });
 
     const token = generateToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
 
     res.cookie('token', token, cookieOptions);
     res.cookie('refreshToken', refreshToken, refreshCookieOptions);
+
+    console.log('✅ User registered successfully:', email);
 
     res.status(201).json({
       success: true,
@@ -130,13 +149,24 @@ exports.resendOTP = async (req, res) => {
     const userExists = await User.findOne({ email });
     if (userExists) return res.status(400).json({ error: 'User already exists' });
 
-    await OTP.deleteMany({ email });
+    // ✅ Delete existing registration OTPs
+    await OTP.deleteMany({ email, type: 'registration' });
 
     const otpCode = generateOTP();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-    await OTP.create({ email, otp: otpCode, expiresAt, attempts: 0 });
+
+    // ✅ FIXED: Set type to 'registration'
+    await OTP.create({
+      email,
+      otp: otpCode,
+      expiresAt,
+      attempts: 0,
+      type: 'registration'
+    });
 
     await sendOTPEmail(email, 'User', otpCode);
+
+    console.log('✅ Resent OTP to:', email);
 
     res.json({ success: true, message: 'New OTP sent to your email' });
   } catch (error) {
@@ -145,7 +175,151 @@ exports.resendOTP = async (req, res) => {
 };
 
 // ===============================
-// @desc    Login user
+// 🆕 @desc    Request OTP for Login
+// @route   POST /api/auth/login/request-otp
+// @access  Public
+// ===============================
+exports.requestLoginOTP = async (req, res) => {
+  try {
+    const email = req.body.email.toLowerCase();
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ error: 'No account found with this email' });
+
+    if (!user.isVerified) {
+      return res.status(403).json({ error: 'Please verify your email first' });
+    }
+
+    // Delete any existing login OTPs
+    await OTP.deleteMany({ email, type: 'login' });
+
+    const otpCode = generateOTP();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+
+    await OTP.create({
+      email,
+      otp: otpCode,
+      expiresAt,
+      attempts: 0,
+      type: 'login'
+    });
+
+    await sendLoginOTPEmail(email, user.name, otpCode);
+
+    res.json({
+      success: true,
+      message: 'Login OTP sent to your email',
+      expiresIn: 600
+    });
+  } catch (error) {
+    console.error('Request Login OTP Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ===============================
+// 🆕 @desc    Verify Login OTP
+// @route   POST /api/auth/login/verify-otp
+// @access  Public
+// ===============================
+exports.verifyLoginOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      return res.status(400).json({ error: 'Email and OTP are required' });
+    }
+
+    const otpRecord = await OTP.findOne({ email, type: 'login' });
+    if (!otpRecord) {
+      return res.status(400).json({ error: 'No OTP found. Please request a new one.' });
+    }
+
+    if (otpRecord.expiresAt < new Date()) {
+      await OTP.deleteOne({ email, type: 'login' });
+      return res.status(400).json({ error: 'OTP expired. Please request a new one.' });
+    }
+
+    if (otpRecord.attempts >= 3) {
+      await OTP.deleteOne({ email, type: 'login' });
+      return res.status(400).json({ error: 'Too many failed attempts. Please request a new OTP.' });
+    }
+
+    if (otpRecord.otp !== otp) {
+      otpRecord.attempts += 1;
+      await otpRecord.save();
+      return res.status(400).json({
+        error: 'Invalid OTP',
+        attemptsLeft: 3 - otpRecord.attempts
+      });
+    }
+
+    // OTP is valid - find user and log them in
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    await OTP.deleteOne({ email, type: 'login' });
+
+    const token = generateToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
+
+    res.cookie('token', token, cookieOptions);
+    res.cookie('refreshToken', refreshToken, refreshCookieOptions);
+
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        monthlyBudget: user.monthlyBudget,
+        weeklyBudget: user.weeklyBudget,
+      },
+    });
+  } catch (error) {
+    console.error('Verify Login OTP Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ===============================
+// 🆕 @desc    Resend Login OTP
+// @route   POST /api/auth/login/resend-otp
+// @access  Public
+// ===============================
+exports.resendLoginOTP = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ error: 'No account found with this email' });
+
+    await OTP.deleteMany({ email, type: 'login' });
+
+    const otpCode = generateOTP();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    await OTP.create({
+      email,
+      otp: otpCode,
+      expiresAt,
+      attempts: 0,
+      type: 'login'
+    });
+
+    await sendLoginOTPEmail(email, user.name, otpCode);
+
+    res.json({ success: true, message: 'New login OTP sent to your email' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ===============================
+// @desc    Login user (with password)
 // @route   POST /api/auth/login
 // @access  Public
 // ===============================

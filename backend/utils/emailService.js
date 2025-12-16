@@ -95,6 +95,89 @@ exports.sendOTPEmail = async (email, name, otp) => {
   }
 };
 
+/**
+ * Send Login OTP Email
+ */
+exports.sendLoginOTPEmail = async (email, name, otp) => {
+  if (!isEmailConfigured()) {
+    console.log('📧 [DEV MODE] Login OTP Email would be sent to:', email);
+    console.log('📧 [DEV MODE] Login OTP Code:', otp);
+    return; // Don't throw error in development
+  }
+
+  const mailOptions = {
+    from: `"Smart Expense Tracker" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: 'Your Login OTP - Smart Expense Tracker',
+    html: `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+          .otp-box { background: white; border: 2px solid #667eea; padding: 20px; text-align: center; margin: 20px 0; border-radius: 8px; }
+          .otp-code { font-size: 32px; font-weight: bold; color: #667eea; letter-spacing: 8px; }
+          .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }
+          .warning { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; margin: 20px 0; }
+          .info-box { background: #dbeafe; border-left: 4px solid #3b82f6; padding: 12px; margin: 20px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🔐 Login Request</h1>
+            <p>Passwordless Authentication</p>
+          </div>
+          <div class="content">
+            <h2>Hello ${name}!</h2>
+            <p>We received a login request for your account. Use the following OTP to complete your login:</p>
+            
+            <div class="otp-box">
+              <div class="otp-code">${otp}</div>
+              <p style="margin-top: 10px; color: #666;">This OTP is valid for 10 minutes</p>
+            </div>
+            
+            <div class="info-box">
+              <strong>🚀 Quick Login:</strong><br>
+              • Enter the OTP on the login page<br>
+              • No password needed<br>
+              • Secure and fast authentication
+            </div>
+            
+            <div class="warning">
+              <strong>⚠️ Security Notice:</strong><br>
+              • Never share this OTP with anyone<br>
+              • Our team will never ask for your OTP<br>
+              • This OTP expires in 10 minutes<br>
+              • You have 3 attempts to enter the correct OTP
+            </div>
+            
+            <p>If you didn't request this login, please ignore this email and consider changing your password.</p>
+            
+            <p>Best regards,<br>Smart Expense Tracker Team</p>
+          </div>
+          <div class="footer">
+            <p>© 2025 Smart Expense Tracker. All rights reserved.</p>
+            <p>This is an automated email. Please do not reply.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log('✅ Login OTP email sent successfully to:', email);
+  } catch (error) {
+    console.error('❌ Error sending login OTP email:', error);
+    throw new Error('Failed to send login OTP email. Please try again later.');
+  }
+};
+
 // ✅ Send Budget Alert Email with validation
 exports.sendBudgetAlert = async (email, name, alertData) => {
   if (!isEmailConfigured()) {

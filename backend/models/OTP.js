@@ -6,16 +6,19 @@ const otpSchema = new mongoose.Schema({
     required: true,
     lowercase: true,
     trim: true
-    // REMOVED: index: true - will be defined below with schema.index()
   },
   otp: {
     type: String,
     required: true
   },
+  type: {
+    type: String,
+    enum: ['registration', 'login'],
+    required: true
+  },
   expiresAt: {
     type: Date,
     required: true
-    // REMOVED: index: true - will be defined below with schema.index()
   },
   attempts: {
     type: Number,
@@ -25,12 +28,11 @@ const otpSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now,
-    expires: 600 // Auto-delete after 10 minutes
+    expires: 600
   }
 });
 
-// FIXED: Define indexes only once using schema.index()
-otpSchema.index({ email: 1 });
+otpSchema.index({ email: 1, type: 1 });
 otpSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 module.exports = mongoose.model('OTP', otpSchema);
